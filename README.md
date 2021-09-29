@@ -1,4 +1,4 @@
-# Very Uncomplicated Real Time Iteration Scheme (vurtis)
+## Very Uncomplicated Real Time Iteration Scheme (vurtis)
 This repository contains a simple header-only implementation of the RTI scheme
 in a multiple-shooting fashion using the sparse OSQP solver and autodiff for algorithmic differentiation.
 
@@ -9,14 +9,14 @@ For now this works as a template. Everything is still experimental and breaking 
 
 Any help or suggestion is welcome!
 
-## Requirements
+### Requirements
 * Eigen3
 * OsqpEigen
 
 and their dependencies.
 
 
-## Usage
+### Usage
 The user is required to define the implementation of the system dynamics, constraints and cost function
 via the two classes `vurtis::Model` and `vurtis::Cost` which inherit the additional necessary functionality
 from the abstract classes `vurtis::ModelBase` and `vurtis::CostBase` respectively.
@@ -26,11 +26,11 @@ using AD.
 
 It is possible to define step-wise parameters for the constraints.
 
-### Example
+#### Example
 The provided `simple_example` performs trajectory tracking with a kinematic unicycle vehicle 
 while satisfying input constraints.
 
-## TODO
+### TODO
 - [ ] extend the cost function hessian to the full nonlinear case
 - [ ] implement terminal cost
 - [ ] include autodiff as a submodule or system dependency
