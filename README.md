@@ -15,6 +15,8 @@ Any help or suggestion is welcome!
 
 and their dependencies.
 
+The autodiff header-only library is bundled in the `include/` directory.
+
 
 ## Usage
 The user is required to define the implementation of the system dynamics, constraints and cost function
@@ -28,7 +30,7 @@ using AD.
 It is possible to define step-wise parameters for the constraints.
 
 ### Example
-The provided `simple_example` performs trajectory tracking with a kinematic unicycle vehicle 
+The provided `src/simple_example.cpp` performs trajectory tracking with a kinematic unicycle vehicle 
 while satisfying input constraints.
 
 ## TODO
