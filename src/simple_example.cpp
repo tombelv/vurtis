@@ -6,7 +6,7 @@
 #include "vurtis/vurtis.h"
 #include "csvparser.hpp"
 
-
+// Simple kinematic unicycle model with no constraints
 class Model : public vurtis::ModelBase {
  public:
   explicit Model(double dt) : ModelBase(dt) {}
@@ -16,23 +16,30 @@ class Model : public vurtis::ModelBase {
   vurtis::VectorAD Dynamics(vurtis::VectorAD &state, vurtis::VectorAD &input) {
 
     vurtis::VectorAD state_dot{3};
-    double a = 0.1;
 
     vurtis::real theta = state[2];
 
     vurtis::real v = input[0];
     vurtis::real omega = input[1];
 
-
-    state_dot[0] = v * cos(theta) - a * omega * sin(theta);
-    state_dot[1] = v * sin(theta) + a * omega * cos(theta);
+    state_dot[0] = v * cos(theta);
+    state_dot[1] = v * sin(theta);
     state_dot[2] = omega;
 
     return state_dot;
   }
 
-  vurtis::VectorAD Constraint(vurtis::VectorAD &state, vurtis::VectorAD &input, vurtis::Vector &params) {}
+  // dual-sided input constraints
+  // constraints are of the type g(x,u)>=0
+  vurtis::VectorAD Constraint(vurtis::VectorAD &state, vurtis::VectorAD &input, vurtis::Vector &params) {
+    vurtis::VectorAD input_constraint(4);
+    input_constraint[0] = input[0] + 1;
+    input_constraint[1] = - input[0] + 1;
+    input_constraint[2] = input[1] + 1;
+    input_constraint[3] = - input[1] + 1;
 
+    return input_constraint;
+  }
   vurtis::VectorAD EndConstraint(vurtis::VectorAD &state, vurtis::Vector &params) {}
 
 };
@@ -40,6 +47,7 @@ class Model : public vurtis::ModelBase {
 class Cost : public vurtis::CostBase {
  public:
   explicit Cost(vurtis::Vector& x_ref, vurtis::Vector& u_ref) : vurtis::CostBase(x_ref, u_ref) {}
+
   // function LeastSquareCost: R(x) such that CostFunctionPointwise=0.5*R(x)'*R(x)
   vurtis::VectorAD LeastSquareCost(vurtis::VectorAD &state, vurtis::VectorAD &input, vurtis::Vector &state_ref, vurtis::Vector &input_ref) {
 
@@ -67,7 +75,7 @@ int main() {
   const size_t nx = 3; // state dimension
   const size_t nu = 2; // input dimension
   const size_t nz = 4; // cost dimension (number of elements of R s.t. cost = 0.5*R'R)
-  const size_t nh = 0; // dimension of stagewise Constraint
+  const size_t nh = 4; // dimension of stagewise Constraint
   const size_t nh_e = 0; // dimension of end Constraint
   const size_t num_parameters = 0; // number of parameters
 
@@ -81,7 +89,7 @@ int main() {
   double elapsed_time = 0.0;
 
 
-  vurtis::Vector crtl;
+  vurtis::Vector ctrl;
 
   vurtis::Vector x_curr{nx};
   x_curr << 1.3, 0, M_PI / 2;
@@ -121,30 +129,30 @@ int main() {
 
     // Update reference and solve the problem
     cost_function->x_ref_ = x_ref;
-    solver.SolveRTI(x_curr);
-    crtl = solver.GetControlInput();
+    ctrl = solver.SolveRTI(x_curr);
+    //crtl = solver.GetControlInput();
 
     // Simulate next state
-    x_curr = unicycle_model->integrator(x_curr, crtl);
+    x_curr = unicycle_model->integrator(x_curr, ctrl);
 
 
     // Iteration timing
     end = std::chrono::steady_clock::now();
     elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()
         / 1000.0; // divided to get milliseconds with microsecond accuracy
-    std::cout << " loop time duration = " << elapsed_time << " [ms]" << std::endl;
+    std::cout << "iteration time duration = " << elapsed_time << " [ms]" << std::endl;
     mean_time_temp += elapsed_time;
     max_time = std::max(elapsed_time, max_time);
 
     // Log data to file
-    state_trajectory << x_curr[0] <<","<<x_curr[1] <<","<<x_curr[2]<<","<<crtl[0]<<","<<crtl[1] <<"\n";
+    state_trajectory << x_curr[0] <<","<<x_curr[1] <<","<<x_curr[2]<<","<<ctrl[0]<<","<<ctrl[1] <<"\n";
     time_step << elapsed_time << "\n";
 
   }
 
   double mean_time = mean_time_temp / Nsim;
-  std::cout << "mean time for one loop =" << mean_time << " [ms]" << std::endl;
-  std::cout << "maximum time for one loop =" << max_time << " [ms]" << std::endl;
+  std::cout << "mean time for one iteration =" << mean_time << " [ms]" << std::endl;
+  std::cout << "maximum time for one iteration =" << max_time << " [ms]" << std::endl;
 
   state_trajectory.close();
   time_step.close();

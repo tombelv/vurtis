@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.1)
 project(vurtis)
 
-set(TargetName "example_no_constraints")
+set(TargetName "simple_example")
 
 set (CMAKE_CXX_STANDARD 17)
 SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)

@@ -219,6 +219,8 @@ class Solver {
     constraint_matrix_.setFromTriplets(tripletList.begin(), tripletList.end());
     constraint_matrix_.makeCompressed();
 
+    ComputeSensitivitiesAndResiduals();
+
     UpdateConstraintMatrix();
 
   }
@@ -276,7 +278,6 @@ class Solver {
 
   void UpdateConstraintMatrix() {
 
-
     Vector nonzero((1 + nx_ + nh_) * (nx_ * N_) + (1 + nh_e_) * nx_ + (nx_ + nh_) * nu_ * N_);
     for (size_t i = 0; i < nx_ * (N_); ++i) {
       nonzero(i * (nx_ + 1 + nh_)) = 1;
@@ -331,7 +332,9 @@ class Solver {
         Cd_list_.middleCols(idx * nx_, nx_) = model_->Cd(state, input, params);
         Dd_list_.middleCols(idx * nu_, nu_) = model_->Dd(state, input, params);
 
-        residual_h_.segment(idx * nh_, nh_) = model_->h_eval_.cast<double>();
+        residual_h_.segment(idx * nh_, nh_) = (model_->h_eval_).cast<double>();
+
+
       }
 
     }
@@ -359,7 +362,6 @@ class Solver {
 
   void SetUref(const Vector &u_ref) { cost_->u_ref_ = u_ref; }
 
-  Vector GetUGuess() const { return u_guess_.head(nu_); }
 
   // Performs shifting repeating the last input
   void UpdateSolutionGuess() {
@@ -410,7 +412,7 @@ class Solver {
 
   //void Feedback(Vector &xcurrent);
 
-  void SolveRTI(Vector &xcurrent) {
+  Vector SolveRTI(Vector &xcurrent) {
 
     SetXcurrent(xcurrent);
 
@@ -425,11 +427,14 @@ class Solver {
     UpdateQPsolver();
     QPsolver_.solve();
 
+    Vector ctrl = u_guess_.head(nu_) + QPsolver_.getSolution().segment(nx_ * (N_ + 1), nu_);
+
     UpdateSolutionGuess();
+
+    return ctrl;
 
   }
 
-  Vector GetControlInput() { return GetUGuess() + QPsolver_.getSolution().segment(nx_ * (N_ + 1), nu_); }
 
 
 
