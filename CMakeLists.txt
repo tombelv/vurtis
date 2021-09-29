@@ -15,8 +15,8 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 
-find_package(OsqpEigen)
-find_package(Eigen3)
+find_package(OsqpEigen REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 include_directories(include)
 

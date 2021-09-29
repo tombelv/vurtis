@@ -55,7 +55,7 @@ class Cost : public vurtis::CostBase {
 
     cost[0] = 15 * (state[0]-state_ref[0]);
     cost[1] = 15 * (state[1]-state_ref[1]);
-    cost[2] = std::sqrt(5) * (input[0]-input_ref[0]);
+    cost[2] = std::sqrt(1) * (input[0]-input_ref[0]);
     cost[3] = std::sqrt(0.1) * (input[1]-input_ref[1]);
 
     return cost;
@@ -70,6 +70,9 @@ int main() {
   std::ofstream time_step;
   state_trajectory.open("state_trajectory.csv");
   time_step.open("time_step.csv");
+  // Load data
+  Eigen::MatrixXd desired_trajectory = load_csv<Eigen::MatrixXd>("data/trajectory_curve_20Hz.csv");
+
 
   const double dT = 0.05; // sampling time (s)
   const size_t nx = 3; // state dimension
@@ -92,25 +95,18 @@ int main() {
   vurtis::Vector ctrl;
 
   vurtis::Vector x_curr{nx};
-  x_curr << 1.3, 0, M_PI / 2;
+  x_curr << 1.2, 0, M_PI / 2;
 
   // ------------------------------------------------------------------------------------------------------------------
   // Initialize reference
   vurtis::Vector x_ref{nx * (N + 1)};
   vurtis::Vector u_ref{nu * N};
 
-  // Load data
-  Eigen::MatrixXd desired_trajectory = load_csv<Eigen::MatrixXd>("data/trajectory_curve_20Hz.csv");
-
-  // Set reference for initialization
-  for (size_t ii = 0; ii <= N; ++ii) {
-    x_ref.segment(ii * nx, nx) = desired_trajectory.row(ii);
-  }
+  x_ref = x_curr.replicate(N+1, 1);
 
   vurtis::Vector u_r(nu);
-  u_r << 0.2, 0;
+  u_r << 0.0, 0.0; // Desired velocities
   u_ref = u_r.replicate(N, 1);
-
   // ------------------------------------------------------------------------------------------------------------------
 
   auto unicycle_model = std::make_shared<Model>(dT);

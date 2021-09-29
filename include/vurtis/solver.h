@@ -256,15 +256,11 @@ class Solver {
 
     hessian_matrix_.coeffs() = nonzero;
 
-    //std::cout << nonzero << std::endl;
 
   }
 
   void UpdateGradient() {
-    //Vector tracking_error{nx_ * (N_ + 1) + nu_ * N_};
-    //tracking_error << (x_guess_ - cost_->x_ref_), (u_guess_ - cost_->u_ref_);
 
-    //gradient_ = hessian_matrix_ * tracking_error;
     for(size_t i = 0; i < N_; ++i) {
       Matrix dR(nz_,nx_+nu_);
       dR << dRdx_list.middleCols(i*nx_,nx_), dRdu_list.middleCols(i*nu_,nu_);
@@ -333,8 +329,6 @@ class Solver {
         Dd_list_.middleCols(idx * nu_, nu_) = model_->Dd(state, input, params);
 
         residual_h_.segment(idx * nh_, nh_) = (model_->h_eval_).cast<double>();
-
-
       }
 
     }
