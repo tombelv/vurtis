@@ -61,15 +61,9 @@ class Solver {
 
   Matrix parameters_;
 
-
-
   Vector x_current_;
 
-
-
   // Cost function
-  //Matrix gradient_cost;
-
   Matrix R_list_;
   Matrix dRdx_list;
   Matrix dRdu_list;
@@ -379,7 +373,6 @@ class Solver {
 
   void SetXcurrent(const Vector &x_current) { x_current_ = x_current; }
 
-  void SetUref(const Vector &u_ref) { cost_->u_ref_ = u_ref; }
 
 
   // Performs shifting repeating the last input
@@ -427,21 +420,20 @@ class Solver {
     QPsolver_.updateBounds(lower_bound_, upper_bound_);
   }
 
-  //void Preparation();
 
-  //void Feedback(Vector &xcurrent);
 
   Vector SolveRTI(Vector &xcurrent) {
 
-    SetXcurrent(xcurrent);
 
     ComputeSensitivitiesAndResiduals();
     ComputeCost();
-    ComputeBounds();
 
     UpdateConstraintMatrix();
     UpdateHessian();
     UpdateGradient();
+
+    SetXcurrent(xcurrent);
+    ComputeBounds();
 
     UpdateQPsolver();
     QPsolver_.solve();
@@ -453,6 +445,32 @@ class Solver {
     return ctrl;
 
   }
+
+  // An example division of preparation and feedback phase.
+  void Preparation() {
+    ComputeSensitivitiesAndResiduals();
+    ComputeCost();
+
+    UpdateConstraintMatrix();
+    UpdateHessian();
+    UpdateGradient();
+  };
+
+  Vector Feedback(Vector &xcurrent) {
+
+    SetXcurrent(xcurrent);
+    ComputeBounds();
+
+    UpdateQPsolver();
+    QPsolver_.solve();
+
+    Vector ctrl = u_guess_.head(nu_) + QPsolver_.getSolution().segment(nx_ * (N_ + 1), nu_);
+
+    UpdateSolutionGuess();
+
+    return ctrl;
+  };
+
 
 
 

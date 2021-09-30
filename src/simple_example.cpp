@@ -149,7 +149,8 @@ int main() {
 
     // Update reference and solve the problem
     cost_function->x_ref_ = x_ref;
-    ctrl = solver.SolveRTI(x_curr);
+    ctrl = solver.Feedback(x_curr);
+    solver.Preparation();
     //crtl = solver.GetControlInput();
 
     // Simulate next state
