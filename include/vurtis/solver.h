@@ -114,7 +114,7 @@ class Solver {
 
     InitConstraintMatrix();
 
-    ComputeBounds();
+    UpdateBounds();
 
     SetupQPsolver();
 
@@ -361,7 +361,7 @@ class Solver {
     }
   }
 
-  void ComputeBounds() {
+  void UpdateBounds() {
     lower_bound_ << (x_current_ - x_guess_.head(nx_)), residual_x_, -residual_h_;
     upper_bound_ << (x_current_ - x_guess_.head(nx_)), residual_x_, OsqpEigen::INFTY * Vector::Ones(nh_ * N_ + nh_e_);
   }
@@ -415,6 +415,7 @@ class Solver {
   }
 
   void UpdateQPsolver() {
+    QPsolver_.updateHessianMatrix(hessian_matrix_);
     QPsolver_.updateGradient(gradient_);
     QPsolver_.updateLinearConstraintsMatrix(constraint_matrix_);
     QPsolver_.updateBounds(lower_bound_, upper_bound_);
@@ -433,7 +434,7 @@ class Solver {
     UpdateGradient();
 
     SetXcurrent(xcurrent);
-    ComputeBounds();
+    UpdateBounds();
 
     UpdateQPsolver();
     QPsolver_.solve();
@@ -459,7 +460,7 @@ class Solver {
   Vector Feedback(Vector &xcurrent) {
 
     SetXcurrent(xcurrent);
-    ComputeBounds();
+    UpdateBounds();
 
     UpdateQPsolver();
     QPsolver_.solve();

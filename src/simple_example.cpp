@@ -28,7 +28,7 @@
 #include <chrono>
 
 #include "vurtis/vurtis.h"
-#include "csvparser.hpp"
+#include "csvparser.h"
 
 // Simple kinematic unicycle model with no constraints
 class Model : public vurtis::ModelBase {
@@ -150,11 +150,12 @@ int main() {
     // Update reference and solve the problem
     cost_function->x_ref_ = x_ref;
     ctrl = solver.Feedback(x_curr);
-    solver.Preparation();
-    //crtl = solver.GetControlInput();
 
     // Simulate next state
     x_curr = unicycle_model->integrator(x_curr, ctrl);
+
+    // Preparation phase for next iteration
+    solver.Preparation();
 
 
     // Iteration timing
