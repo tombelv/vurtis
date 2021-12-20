@@ -7,7 +7,7 @@ much more could be done.
 
 For now this works as a template. Everything is still experimental and breaking changes might occur.
 
-Eventually the header-only part is going to be an INTERFACE library to be implemented in other projects
+Eventually the header-only part is going to be an INTERFACE library to be implemented in other projects.
 
 ## Requirements
 * Eigen3
@@ -38,7 +38,7 @@ while satisfying input constraints.
 - [ ] implement terminal cost
 - [ ] include autodiff as a submodule or system dependency
 - [ ] some interface to set OSQP settings during setup
-- [ ] Maibe rewrite the OSQP wrapper to avoid unnecessary checks
+- [ ] maybe rewrite the OSQP wrapper to avoid unnecessary checks
 
 # License
 
