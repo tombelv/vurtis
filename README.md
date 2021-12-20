@@ -7,7 +7,7 @@ much more could be done.
 
 For now this works as a template. Everything is still experimental and breaking changes might occur.
 
-Any help or suggestion is welcome!
+Eventually the header-only part is going to be an INTERFACE library to be implemented in other projects
 
 ## Requirements
 * Eigen3
@@ -34,10 +34,11 @@ The provided `src/simple_example.cpp` performs trajectory tracking with a kinema
 while satisfying input constraints.
 
 ## TODO
-- [ ] extend the cost function hessian to the full nonlinear case
+- [ ] extend the cost function hessian to the full nonlinear case, for now the sensitivity assumes separation between functions of state and input
 - [ ] implement terminal cost
 - [ ] include autodiff as a submodule or system dependency
 - [ ] some interface to set OSQP settings during setup
+- [ ] Maibe rewrite the OSQP wrapper to avoid unnecessary checks
 
 # License
 
