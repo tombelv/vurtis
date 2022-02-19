@@ -6,7 +6,7 @@
 #include "vurtis/vurtis.h"
 #include "csvparser.h"
 
-// Simple kinematic unicycle model with no constraints
+// Simple kinematic unicycle model with input constraints
 class Model : public vurtis::ModelBase {
  public:
   explicit Model(double dt) : ModelBase(dt) {}
@@ -14,9 +14,7 @@ class Model : public vurtis::ModelBase {
  private:
 // Continuous-time dynamic model of the system for AD
   vurtis::VectorAD Dynamics(vurtis::VectorAD &state, vurtis::VectorAD &input) {
-
     vurtis::VectorAD state_dot{3};
-
     vurtis::real theta = state[2];
 
     vurtis::real v = input[0];
