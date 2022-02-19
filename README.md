@@ -7,7 +7,6 @@ much more could be done.
 
 For now this works as a template. Everything is still experimental and breaking changes might occur.
 
-Any help or suggestion is welcome!
 
 ## Requirements
 * Eigen3
@@ -38,12 +37,13 @@ while satisfying input constraints.
 - [ ] implement terminal cost
 - [ ] include autodiff as a submodule or system dependency
 - [ ] some interface to set OSQP settings during setup
+- [ ] rewrite OSQP interface for more performance
 
 # License
 
 MIT License
 
-Copyright (c) 2021 Tommaso Belvedere
+Copyright (c) 2022 Tommaso Belvedere
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
