@@ -120,7 +120,7 @@ class Solver {
 
     ComputeCost();
 
-    tripletList.reserve(nx_ * (N_ + 1) + nu_ * N_);
+    tripletList.reserve(nx_*nx_ * (N_ + 1) + nu_*nu_ * N_ + 2*nx_*nu_*N_);
 
 
 
@@ -131,16 +131,32 @@ class Solver {
       Matrix H_dudu = (dRdu_list.middleCols(idx_u,nu_)).transpose()*dRdu_list.middleCols(idx_u,nu_);
 
       Matrix H_dxdu = (dRdx_list.middleCols(idx_x,nx_)).transpose()*dRdu_list.middleCols(idx_u,nu_);
-      
+      Matrix H_dudx = H_dxdu.transpose();
+
+
+      // State derivative terms
       for (int row_idx = 0; row_idx < nx_; ++row_idx) {
         for (int col_idx = 0; col_idx < nx_; ++col_idx)
           tripletList.push_back(Eigen::Triplet<double>(idx_x + row_idx, idx_x + col_idx, H_dxdx(row_idx, col_idx)));
       }
-
+      // Input derivative terms
       for (int row_idx = 0; row_idx < nu_; ++row_idx) {
         for (int col_idx = 0; col_idx < nu_; ++col_idx)
           tripletList.push_back(Eigen::Triplet<double>(idx_u + nx_*(N_+1) + row_idx, idx_u + nx_*(N_+1) + col_idx, H_dudu(row_idx, col_idx)));
       }
+
+      /* Cross derivative terms (dxdu)
+       * This is the upper triangular block */
+      for (int row_idx = 0; row_idx < nx_; ++row_idx) {
+        for (int col_idx = 0; col_idx < nu_; ++col_idx)
+          tripletList.push_back(Eigen::Triplet<double>(idx_x + row_idx, idx_u + nx_*(N_+1) + col_idx, H_dxdu(row_idx, col_idx)));
+      }
+      // There is a lower triangular symmetric block for dudx
+      for (int row_idx = 0; row_idx < nu_; ++row_idx) {
+        for (int col_idx = 0; col_idx < nx_; ++col_idx)
+          tripletList.push_back(Eigen::Triplet<double>(idx_u + row_idx + nx_*(N_+1), idx_x  + col_idx, H_dudx(row_idx, col_idx)));
+      }
+
     }
 
     // !! For now the end cost is set to zero !!
@@ -151,8 +167,6 @@ class Solver {
           tripletList.push_back(Eigen::Triplet<double>(i + row_idx, i + col_idx, 0.0));
       }
     }
-
-
 
 
     hessian_matrix_.setFromTriplets(tripletList.begin(), tripletList.end());
@@ -227,29 +241,43 @@ class Solver {
 
   void UpdateHessian() {
 
-    Vector nonzero(nx_*nx_*(N_+1) + nu_*nu_*N_);
+    Vector nonzero(nx_*nx_*(N_+1) + nu_*nu_*N_ + 2*nx_*nu_*N_);
 
-    for (int i = 0; i < nx_ * N_; i = i + nx_) {
-      Matrix H_dxdx = (dRdx_list.middleCols(i,nx_)).transpose()*dRdx_list.middleCols(i,nx_);
-      for (int ii = 0; ii < nx_; ++ii)
-        nonzero.segment(nx_*(i + ii), nx_) = H_dxdx.col(ii);
+
+    for (int i = 0; i <  N_; ++i) {
+      int idx_x = i*nx_;
+      int idx_u = i*nu_;
+      Matrix H_dxdx = (dRdx_list.middleCols(idx_x,nx_)).transpose()*dRdx_list.middleCols(idx_x,nx_);
+      Matrix H_dudx = (dRdu_list.middleCols(idx_u,nu_)).transpose()*dRdx_list.middleCols(idx_x,nx_);
+      for (int ii = 0; ii < nx_; ++ii) {
+        nonzero.segment((nx_ + nu_) * (idx_x + ii), nx_) = H_dxdx.col(ii);
+        nonzero.segment((nx_ + nu_) * (idx_x + ii) + nx_, nu_) = H_dudx.col(ii);
+      }
     }
 
     // For now the terminal cost is zero
-    { int i = nx_*N_;
+    { int i = (nx_+nu_)*N_;
       for (int ii = 0; ii < nx_; ++ii)
         nonzero.segment(nx_*(i + ii), nx_) = Vector::Zero(nx_);
     }
 
-    int input_start_coeff = nx_*nx_*(N_+1);
 
-    for (int i = 0; i < nu_ * N_; i = i + nu_) {
-      Matrix H_dudu = (dRdu_list.middleCols(i,nu_)).transpose()*dRdu_list.middleCols(i,nu_);
-      for (int ii = 0; ii < nu_; ++ii)
-        nonzero.segment(nu_*(i + ii)+input_start_coeff, nu_) = H_dudu.col(ii);
+
+    const int input_start_coeff = nx_*nx_*(N_+1) + nx_*nu_*N_;
+
+    for (int i = 0; i <  N_; ++i) {
+      int idx_x = i*nx_;
+      int idx_u = i*nu_;
+      Matrix H_dudu = (dRdu_list.middleCols(idx_u,nu_)).transpose()*dRdu_list.middleCols(idx_u,nu_);
+      Matrix H_dxdu = (dRdx_list.middleCols(idx_x,nx_)).transpose()*dRdu_list.middleCols(idx_u,nu_);
+      for (int ii = 0; ii < nu_; ++ii) {
+        nonzero.segment((nx_ + nu_) * (idx_u + ii) + input_start_coeff, nx_) = H_dxdu.col(ii);
+        nonzero.segment((nx_ + nu_) * (idx_u + ii) + nx_ + input_start_coeff, nu_) = H_dudu.col(ii);
+      }
     }
 
     hessian_matrix_.coeffs() = nonzero;
+
 
 
   }
