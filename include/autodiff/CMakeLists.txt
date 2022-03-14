@@ -18,6 +18,6 @@ target_include_directories(autodiff
 install(TARGETS autodiff EXPORT autodiffTargets)
 
 # Install autodiff header files
-install(DIRECTORY .
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/autodiff
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} COMPONENT headers
     PATTERN "CMakeLists.txt" EXCLUDE)
