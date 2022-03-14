@@ -123,20 +123,29 @@ class Solver {
     tripletList.reserve(nx_ * (N_ + 1) + nu_ * N_);
 
 
-    // Build the N_ state blocks (dim: nx_*N_)
-    // Outer loop iterates over blocks, inner loop over Q
-    // e.g. (nx_ = 3) i=0,3,6,9... ii=0,1,2,0,1,2,0,1,2...
-    for (int i = 0; i < nx_ * N_; i = i + nx_) {
-      Matrix dRdx_pwise = (dRdx_list.middleCols(i,nx_)).transpose()*dRdx_list.middleCols(i,nx_);
+
+    for (int i = 0; i <  N_; ++i) {
+      int idx_x = i*nx_;
+      int idx_u = i*nu_;
+      Matrix H_dxdx = (dRdx_list.middleCols(idx_x,nx_)).transpose()*dRdx_list.middleCols(idx_x,nx_);
+      Matrix H_dudu = (dRdu_list.middleCols(idx_u,nu_)).transpose()*dRdu_list.middleCols(idx_u,nu_);
+
+      Matrix H_dxdu = (dRdx_list.middleCols(idx_x,nx_)).transpose()*dRdu_list.middleCols(idx_u,nu_);
+      
       for (int row_idx = 0; row_idx < nx_; ++row_idx) {
         for (int col_idx = 0; col_idx < nx_; ++col_idx)
-          tripletList.push_back(Eigen::Triplet<double>(i + row_idx, i + col_idx, dRdx_pwise(row_idx, col_idx)));
+          tripletList.push_back(Eigen::Triplet<double>(idx_x + row_idx, idx_x + col_idx, H_dxdx(row_idx, col_idx)));
+      }
+
+      for (int row_idx = 0; row_idx < nu_; ++row_idx) {
+        for (int col_idx = 0; col_idx < nu_; ++col_idx)
+          tripletList.push_back(Eigen::Triplet<double>(idx_u + nx_*(N_+1) + row_idx, idx_u + nx_*(N_+1) + col_idx, H_dudu(row_idx, col_idx)));
       }
     }
 
     // !! For now the end cost is set to zero !!
     // Add the end cost_ block (dim: nx_)
-    { int i =  nx_ * N_;
+    { int i = nx_ * N_;
       for (int row_idx = 0; row_idx < nx_; ++row_idx) {
         for (int col_idx = 0; col_idx < nx_; ++col_idx)
           tripletList.push_back(Eigen::Triplet<double>(i + row_idx, i + col_idx, 0.0));
@@ -145,19 +154,10 @@ class Solver {
 
 
 
-    // Build the N_ input (dim: nu_*N_)
-    for (int i = nx_ * (N_ + 1); i < nx_ * (N_ + 1) + nu_ * N_; i = i + nu_) {
-      Matrix dRdu_pwise = (dRdu_list.middleCols(i-nx_ * (N_ + 1),nu_)).transpose()*dRdu_list.middleCols(i-nx_ * (N_ + 1),nu_);
-      for (int row_idx = 0; row_idx < nu_; ++row_idx) {
-        for (int col_idx = 0; col_idx < nu_; ++col_idx)
-          tripletList.push_back(Eigen::Triplet<double>(i + row_idx, i + col_idx, dRdu_pwise(row_idx, col_idx)));
-      }
-    }
 
     hessian_matrix_.setFromTriplets(tripletList.begin(), tripletList.end());
 
     hessian_matrix_.makeCompressed();
-
 
   }
 
@@ -230,9 +230,9 @@ class Solver {
     Vector nonzero(nx_*nx_*(N_+1) + nu_*nu_*N_);
 
     for (int i = 0; i < nx_ * N_; i = i + nx_) {
-      Matrix dRdx_pwise = (dRdx_list.middleCols(i,nx_)).transpose()*dRdx_list.middleCols(i,nx_);
+      Matrix H_dxdx = (dRdx_list.middleCols(i,nx_)).transpose()*dRdx_list.middleCols(i,nx_);
       for (int ii = 0; ii < nx_; ++ii)
-        nonzero.segment(nx_*(i + ii), nx_) = dRdx_pwise.col(ii);
+        nonzero.segment(nx_*(i + ii), nx_) = H_dxdx.col(ii);
     }
 
     // For now the terminal cost is zero
@@ -244,9 +244,9 @@ class Solver {
     int input_start_coeff = nx_*nx_*(N_+1);
 
     for (int i = 0; i < nu_ * N_; i = i + nu_) {
-      Matrix dRdu_pwise = (dRdu_list.middleCols(i,nu_)).transpose()*dRdu_list.middleCols(i,nu_);
+      Matrix H_dudu = (dRdu_list.middleCols(i,nu_)).transpose()*dRdu_list.middleCols(i,nu_);
       for (int ii = 0; ii < nu_; ++ii)
-        nonzero.segment(nu_*(i + ii)+input_start_coeff, nu_) = dRdu_pwise.col(ii);
+        nonzero.segment(nu_*(i + ii)+input_start_coeff, nu_) = H_dudu.col(ii);
     }
 
     hessian_matrix_.coeffs() = nonzero;
