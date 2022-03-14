@@ -89,22 +89,20 @@ int main() {
   double max_time = 1e-12;
   double elapsed_time = 0.0;
 
-
   vurtis::Vector ctrl;
 
-  vurtis::Vector x_curr{nx};
+  vurtis::Vector x_curr(nx);
   x_curr << 1.2, 0, M_PI / 2;
 
   // ------------------------------------------------------------------------------------------------------------------
   // Initialize reference
-  vurtis::Vector x_ref{nx * (N + 1)};
-  vurtis::Vector u_ref{nu * N};
+  vurtis::Vector x_ref(nx * (N + 1));
+  vurtis::Vector u_ref(nu * N);
 
   x_ref = x_curr.replicate(N+1, 1);
 
-  vurtis::Vector u_r(nu);
-  u_r << 0.0, 0.0; // Desired velocities
-  u_ref = u_r.replicate(N, 1);
+
+  u_ref = Eigen::Vector2d(0.0,0.0).replicate(N, 1);
   // ------------------------------------------------------------------------------------------------------------------
 
   auto unicycle_model = std::make_shared<Model>(dT);
