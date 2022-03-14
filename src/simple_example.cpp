@@ -13,7 +13,7 @@ class Model : public vurtis::ModelBase {
 
  private:
 // Continuous-time dynamic model of the system for AD
-  vurtis::VectorAD Dynamics(vurtis::VectorAD &state, vurtis::VectorAD &input) {
+  vurtis::VectorAD Dynamics(const vurtis::VectorAD &state, const vurtis::VectorAD &input) {
     vurtis::VectorAD state_dot{3};
     vurtis::real theta = state[2];
 
@@ -29,7 +29,7 @@ class Model : public vurtis::ModelBase {
 
   // dual-sided input constraints
   // constraints are of the type g(x,u)>=0
-  vurtis::VectorAD Constraint(vurtis::VectorAD &state, vurtis::VectorAD &input, vurtis::Vector &params) {
+  vurtis::VectorAD Constraint(const vurtis::VectorAD &state, const vurtis::VectorAD &input, const vurtis::Vector &params) {
     vurtis::VectorAD input_constraint(4);
     input_constraint[0] = input[0] + 1;
     input_constraint[1] = - input[0] + 1;
@@ -38,16 +38,16 @@ class Model : public vurtis::ModelBase {
 
     return input_constraint;
   }
-  vurtis::VectorAD EndConstraint(vurtis::VectorAD &state, vurtis::Vector &params) {}
+  vurtis::VectorAD EndConstraint(const vurtis::VectorAD &state, const vurtis::Vector &params) {}
 
 };
 
 class Cost : public vurtis::CostBase {
  public:
-  explicit Cost(vurtis::Vector& x_ref, vurtis::Vector& u_ref) : vurtis::CostBase(x_ref, u_ref) {}
+  explicit Cost(const vurtis::Vector& x_ref, const vurtis::Vector& u_ref) : vurtis::CostBase(x_ref, u_ref) {}
 
   // function LeastSquareCost: R(x) such that CostFunctionPointwise=0.5*R(x)'*R(x)
-  vurtis::VectorAD LeastSquareCost(vurtis::VectorAD &state, vurtis::VectorAD &input, vurtis::Vector &state_ref, vurtis::Vector &input_ref) {
+  vurtis::VectorAD LeastSquareCost(const vurtis::VectorAD &state, const vurtis::VectorAD &input, const vurtis::Vector &state_ref, const vurtis::Vector &input_ref) {
 
     vurtis::VectorAD cost(4);
 

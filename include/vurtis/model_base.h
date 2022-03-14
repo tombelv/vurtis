@@ -22,7 +22,7 @@ class ModelBase {
   //------------------------------------------------------------------------------------------------------------------
 
   // continuous-time Dynamics to be implemented
-  virtual VectorAD Dynamics(VectorAD &state, VectorAD &input) = 0;
+  virtual VectorAD Dynamics(const VectorAD &state, const VectorAD &input) = 0;
 
   // discretization with Runge-Kutta 4th order
   // ns steps over the sampling time interval dt_
@@ -31,10 +31,10 @@ class ModelBase {
 
     VectorAD state_next = state;
 
-    size_t ns = 1;
+    int ns = 1;
     double h = dt_ / ns;
 
-    for (size_t i = 0; i < ns; ++i) {
+    for (int i = 0; i < ns; ++i) {
       VectorAD k1 = Dynamics(state, input);
 
       VectorAD temp1 = state + 0.5 * k1 * h;
@@ -66,24 +66,20 @@ class ModelBase {
   // Dynamics sensitivities
   // lambda functions are needed to pass member functions to autodiff
   Matrix Ad(VectorAD &state, VectorAD &input) {
-    return autodiff::jacobian([&](VectorAD &state, VectorAD &input) {
-      return step(state,
-                  input);
-    }, wrt(state), at(state, input), F_eval_);
+    return autodiff::jacobian([&](VectorAD &state, VectorAD &input) {return step(state,input); },
+                              wrt(state), at(state, input), F_eval_);
   }
 
   Matrix Bd(VectorAD &state, VectorAD &input) {
-    return autodiff::jacobian([&](VectorAD &state, VectorAD &input) {
-      return step(state,
-                  input);
-    }, wrt(input), at(state, input), F_eval_);
+    return autodiff::jacobian([&](VectorAD &state, VectorAD &input) {return step(state,input);},
+                              wrt(input), at(state, input), F_eval_);
   }
   //------------------------------------------------------------------------------------------------------------------
 
   // constraints (to be implemented) and their sensitivities
 
-  virtual VectorAD Constraint(VectorAD &state, VectorAD &input, Eigen::VectorXd &params) = 0;
-  virtual VectorAD EndConstraint(VectorAD &state, Eigen::VectorXd &params) = 0;
+  virtual VectorAD Constraint(const VectorAD &state, const VectorAD &input, const Eigen::VectorXd &params) = 0;
+  virtual VectorAD EndConstraint(const VectorAD &state, const Eigen::VectorXd &params) = 0;
 
   Matrix Cd(VectorAD &state, VectorAD &input, Eigen::VectorXd &params) {
     return autodiff::jacobian([&](VectorAD &state,

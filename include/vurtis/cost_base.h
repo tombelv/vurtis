@@ -8,14 +8,14 @@ class CostBase {
 
  public:
 
-  CostBase(Vector& x_ref, Vector& u_ref) : x_ref_(x_ref), u_ref_(u_ref) {}
+  CostBase(const Vector& x_ref, const Vector& u_ref) : x_ref_(x_ref), u_ref_(u_ref) {}
 
   Vector x_ref_; // state reference
   Vector u_ref_; // input reference
 
   VectorAD cost_eval_;
 
-  virtual VectorAD LeastSquareCost(VectorAD &state, VectorAD &input, Vector &state_ref, Vector &input_ref) = 0;
+  virtual VectorAD LeastSquareCost(const VectorAD &state, const VectorAD &input, const Vector &state_ref, const Vector &input_ref) = 0;
 
   Matrix GradientCost(VectorAD &state, VectorAD &input, Vector &state_ref, Vector &input_ref) {
     return autodiff::jacobian([&](VectorAD &state,
