@@ -13,14 +13,14 @@ class Solver {
 
  private:
 
-  size_t nx_;
-  size_t nu_;
-  size_t nz_;
-  size_t nh_;
-  size_t nh_e_;
+  int nx_;
+  int nu_;
+  int nz_;
+  int nh_;
+  int nh_e_;
 
-  size_t num_parameters_;
-  size_t N_;
+  int num_parameters_;
+  int N_;
 
   Matrix Ad_list_;
   Matrix Bd_list_;
@@ -126,19 +126,19 @@ class Solver {
     // Build the N_ state blocks (dim: nx_*N_)
     // Outer loop iterates over blocks, inner loop over Q
     // e.g. (nx_ = 3) i=0,3,6,9... ii=0,1,2,0,1,2,0,1,2...
-    for (size_t i = 0; i < nx_ * N_; i = i + nx_) {
+    for (int i = 0; i < nx_ * N_; i = i + nx_) {
       Matrix dRdx_pwise = (dRdx_list.middleCols(i,nx_)).transpose()*dRdx_list.middleCols(i,nx_);
-      for (size_t row_idx = 0; row_idx < nx_; ++row_idx) {
-        for (size_t col_idx = 0; col_idx < nx_; ++col_idx)
+      for (int row_idx = 0; row_idx < nx_; ++row_idx) {
+        for (int col_idx = 0; col_idx < nx_; ++col_idx)
           tripletList.push_back(Eigen::Triplet<double>(i + row_idx, i + col_idx, dRdx_pwise(row_idx, col_idx)));
       }
     }
 
     // !! For now the end cost is set to zero !!
     // Add the end cost_ block (dim: nx_)
-    { size_t i =  nx_ * N_;
-      for (size_t row_idx = 0; row_idx < nx_; ++row_idx) {
-        for (size_t col_idx = 0; col_idx < nx_; ++col_idx)
+    { int i =  nx_ * N_;
+      for (int row_idx = 0; row_idx < nx_; ++row_idx) {
+        for (int col_idx = 0; col_idx < nx_; ++col_idx)
           tripletList.push_back(Eigen::Triplet<double>(i + row_idx, i + col_idx, 0.0));
       }
     }
@@ -146,10 +146,10 @@ class Solver {
 
 
     // Build the N_ input (dim: nu_*N_)
-    for (size_t i = nx_ * (N_ + 1); i < nx_ * (N_ + 1) + nu_ * N_; i = i + nu_) {
+    for (int i = nx_ * (N_ + 1); i < nx_ * (N_ + 1) + nu_ * N_; i = i + nu_) {
       Matrix dRdu_pwise = (dRdu_list.middleCols(i-nx_ * (N_ + 1),nu_)).transpose()*dRdu_list.middleCols(i-nx_ * (N_ + 1),nu_);
-      for (size_t row_idx = 0; row_idx < nu_; ++row_idx) {
-        for (size_t col_idx = 0; col_idx < nu_; ++col_idx)
+      for (int row_idx = 0; row_idx < nu_; ++row_idx) {
+        for (int col_idx = 0; col_idx < nu_; ++col_idx)
           tripletList.push_back(Eigen::Triplet<double>(i + row_idx, i + col_idx, dRdu_pwise(row_idx, col_idx)));
       }
     }
@@ -165,9 +165,10 @@ class Solver {
 
   void InitGradient() {
 
-    for(size_t i = 0; i < N_; ++i) {
+    for(int i = 0; i < N_; ++i) {
       Matrix dR(nz_,nx_+nu_);
-      dR << dRdx_list.middleCols(i*nx_,nx_), dRdu_list.middleCols(i*nu_,nu_);
+      dR.leftCols(nx_) = dRdx_list.middleCols(i*nx_,nx_);
+      dR.rightCols(nu_) = dRdu_list.middleCols(i*nu_,nu_);
       Vector grad = (R_list_.col(i)).transpose()*dR;
       gradient_.segment(i * nx_, nx_) = grad.head(nx_);
       gradient_.segment(nx_*(N_+1) + i * nu_, nu_) = grad.tail(nu_);
@@ -180,33 +181,33 @@ class Solver {
     tripletList.reserve((nx_ + 1 + nh_) * (nx_ * N_) + (1 + nh_e_) * nx_ + (nx_ + nh_) * nu_ * N_);
 
     // Build identity block
-    for (size_t i = 0; i < nx_ * (N_ + 1); ++i)
+    for (int i = 0; i < nx_ * (N_ + 1); ++i)
       tripletList.push_back(Eigen::Triplet<double>(i, i, 1.0));
 
-    for (size_t block = 0; block < N_; ++block) {
-      for (size_t col = block * nx_; col < (block + 1) * nx_; ++col) {
+    for (int block = 0; block < N_; ++block) {
+      for (int col = block * nx_; col < (block + 1) * nx_; ++col) {
 
-        for (size_t row = (block + 1) * nx_; row < (block + 2) * nx_; ++row)
+        for (int row = (block + 1) * nx_; row < (block + 2) * nx_; ++row)
           tripletList.push_back(Eigen::Triplet<double>(row, col, 0.0));
 
-        for (size_t row = nx_ * (N_ + 1) + block * nh_; row < nx_ * (N_ + 1) + (block + 1) * nh_; ++row)
-          tripletList.push_back(Eigen::Triplet<double>(row, col, 0.0));
-      }
-    }
-
-    for (size_t block = 0; block < N_; ++block) {
-      for (size_t col = nx_ * (N_ + 1) + block * nu_; col < nx_ * (N_ + 1) + (block + 1) * nu_; ++col) {
-
-        for (size_t row = (block + 1) * nx_; row < (block + 2) * nx_; ++row)
-          tripletList.push_back(Eigen::Triplet<double>(row, col, 0.0));
-
-        for (size_t row = nx_ * (N_ + 1) + block * nh_; row < nx_ * (N_ + 1) + (block + 1) * nh_; ++row)
+        for (int row = nx_ * (N_ + 1) + block * nh_; row < nx_ * (N_ + 1) + (block + 1) * nh_; ++row)
           tripletList.push_back(Eigen::Triplet<double>(row, col, 0.0));
       }
     }
 
-    for (size_t col = nx_ * N_; col < nx_ * (N_ + 1); ++col) {
-      for (size_t row = nx_ * (N_ + 1) + nh_ * N_; row < nx_ * (N_ + 1) + nh_ * N_ + nh_e_; ++row)
+    for (int block = 0; block < N_; ++block) {
+      for (int col = nx_ * (N_ + 1) + block * nu_; col < nx_ * (N_ + 1) + (block + 1) * nu_; ++col) {
+
+        for (int row = (block + 1) * nx_; row < (block + 2) * nx_; ++row)
+          tripletList.push_back(Eigen::Triplet<double>(row, col, 0.0));
+
+        for (int row = nx_ * (N_ + 1) + block * nh_; row < nx_ * (N_ + 1) + (block + 1) * nh_; ++row)
+          tripletList.push_back(Eigen::Triplet<double>(row, col, 0.0));
+      }
+    }
+
+    for (int col = nx_ * N_; col < nx_ * (N_ + 1); ++col) {
+      for (int row = nx_ * (N_ + 1) + nh_ * N_; row < nx_ * (N_ + 1) + nh_ * N_ + nh_e_; ++row)
         tripletList.push_back(Eigen::Triplet<double>(row, col, 0.0));
     }
 
@@ -228,23 +229,23 @@ class Solver {
 
     Vector nonzero(nx_*nx_*(N_+1) + nu_*nu_*N_);
 
-    for (size_t i = 0; i < nx_ * N_; i = i + nx_) {
+    for (int i = 0; i < nx_ * N_; i = i + nx_) {
       Matrix dRdx_pwise = (dRdx_list.middleCols(i,nx_)).transpose()*dRdx_list.middleCols(i,nx_);
-      for (size_t ii = 0; ii < nx_; ++ii)
+      for (int ii = 0; ii < nx_; ++ii)
         nonzero.segment(nx_*(i + ii), nx_) = dRdx_pwise.col(ii);
     }
 
     // For now the terminal cost is zero
-    { size_t i = nx_*N_;
-      for (size_t ii = 0; ii < nx_; ++ii)
+    { int i = nx_*N_;
+      for (int ii = 0; ii < nx_; ++ii)
         nonzero.segment(nx_*(i + ii), nx_) = Vector::Zero(nx_);
     }
 
-    size_t input_start_coeff = nx_*nx_*(N_+1);
+    int input_start_coeff = nx_*nx_*(N_+1);
 
-    for (size_t i = 0; i < nu_ * N_; i = i + nu_) {
+    for (int i = 0; i < nu_ * N_; i = i + nu_) {
       Matrix dRdu_pwise = (dRdu_list.middleCols(i,nu_)).transpose()*dRdu_list.middleCols(i,nu_);
-      for (size_t ii = 0; ii < nu_; ++ii)
+      for (int ii = 0; ii < nu_; ++ii)
         nonzero.segment(nu_*(i + ii)+input_start_coeff, nu_) = dRdu_pwise.col(ii);
     }
 
@@ -255,7 +256,7 @@ class Solver {
 
   void UpdateGradient() {
 
-    for(size_t i = 0; i < N_; ++i) {
+    for(int i = 0; i < N_; ++i) {
       Matrix dR(nz_,nx_+nu_);
       dR << dRdx_list.middleCols(i*nx_,nx_), dRdu_list.middleCols(i*nu_,nu_);
       Vector grad = (R_list_.col(i)).transpose()*dR;
@@ -269,19 +270,19 @@ class Solver {
   void UpdateConstraintMatrix() {
 
     Vector nonzero((1 + nx_ + nh_) * (nx_ * N_) + (1 + nh_e_) * nx_ + (nx_ + nh_) * nu_ * N_);
-    for (size_t i = 0; i < nx_ * (N_); ++i) {
+    for (int i = 0; i < nx_ * (N_); ++i) {
       nonzero(i * (nx_ + 1 + nh_)) = 1;
       nonzero.segment(i * (nx_ + 1 + nh_) + 1, nx_) = -Ad_list_.col(i);
       nonzero.segment(i * (nx_ + 1 + nh_) + 1 + nx_, nh_) = Cd_list_.col(i);
     }
 
     //nonzero.segment((nx_+1+nh_)*(nx_*N_),nx_) << Vector::Ones(nx_);
-    for (size_t i = 0; i < nx_; ++i)
+    for (int i = 0; i < nx_; ++i)
       nonzero.segment(i * (1 + nh_e_) + (nx_ + 1 + nh_) * (nx_ * N_), 1 + nh_e_) << 1, Cd_e.col(i);
 
-    size_t input_start_coeff = (nx_ + 1 + nh_) * (nx_ * N_) + (1 + nh_e_) * nx_;
+    int input_start_coeff = (nx_ + 1 + nh_) * (nx_ * N_) + (1 + nh_e_) * nx_;
 
-    for (size_t i = 0; i < nu_ * N_; ++i) {
+    for (int i = 0; i < nu_ * N_; ++i) {
       nonzero.segment(i * (nx_ + nh_) + input_start_coeff, nx_) = -Bd_list_.col(i);
       nonzero.segment(i * (nx_ + nh_) + input_start_coeff + nx_, nh_) = Dd_list_.col(i);
     }
@@ -291,7 +292,7 @@ class Solver {
   }
 
   void ComputeCost() {
-    for (size_t idx = 0; idx < N_; ++idx) {
+    for (int idx = 0; idx < N_; ++idx) {
       VectorAD state = x_guess_.segment(idx * nx_, nx_);
       VectorAD input = u_guess_.segment(idx * nu_, nu_);
       Vector state_ref = cost_->x_ref_.segment(idx * nx_, nx_);
@@ -307,7 +308,7 @@ class Solver {
   }
 
   void ComputeSensitivitiesAndResiduals() {
-    for (size_t idx = 0; idx < N_; ++idx) {
+    for (int idx = 0; idx < N_; ++idx) {
       VectorAD state = x_guess_.segment(idx * nx_, nx_);
       VectorAD state_next = x_guess_.segment((idx + 1) * nx_, nx_);
       VectorAD input = u_guess_.segment(idx * nu_, nu_);
@@ -341,7 +342,7 @@ class Solver {
     upper_bound_ << (x_current_ - x_guess_.head(nx_)), residual_x_, OsqpEigen::INFTY * Vector::Ones(nh_ * N_ + nh_e_);
   }
 
-  void SetParametersAtStage(size_t stage, const Vector &parameters) {
+  void SetParametersAtStage(int stage, const Vector &parameters) {
     parameters_.col(stage) = parameters;
   }
 
@@ -384,9 +385,9 @@ class Solver {
     QPsolver_.data()->setUpperBound(upper_bound_);
 
     // instantiate the solver
-    if (!QPsolver_.initSolver()) return 1;
+    if (!QPsolver_.initSolver()) return true;
 
-    return 0;
+    return false;
   }
 
   void UpdateQPsolver() {
@@ -412,7 +413,7 @@ class Solver {
     UpdateBounds();
 
     UpdateQPsolver();
-    QPsolver_.solve();
+    QPsolver_.solveProblem();
 
     Vector ctrl = u_guess_.head(nu_) + QPsolver_.getSolution().segment(nx_ * (N_ + 1), nu_);
 
@@ -438,7 +439,7 @@ class Solver {
     UpdateBounds();
 
     UpdateQPsolver();
-    QPsolver_.solve();
+    QPsolver_.solveProblem();
 
     Vector ctrl = u_guess_.head(nu_) + QPsolver_.getSolution().segment(nx_ * (N_ + 1), nu_);
 

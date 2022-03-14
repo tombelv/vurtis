@@ -34,13 +34,13 @@ class CostBase {
 
 struct ProblemInit {
 
-  const size_t nx; // number of states of dynamic model
-  const size_t nu; // number of inputs
-  const size_t nz; // dimension of the least square cost function
-  const size_t nh; // number of constraints (step=0,...,N-1)
-  const size_t nh_e; // number of end-constraints (step=N)
-  const size_t N; // number of steps
-  const size_t num_parameters; // number of parameters
+  const int nx; // number of states of dynamic model
+  const int nu; // number of inputs
+  const int nz; // dimension of the least square cost function
+  const int nh; // number of constraints (step=0,...,N-1)
+  const int nh_e; // number of end-constraints (step=N)
+  const int N; // number of steps
+  const int num_parameters; // number of parameters
 
   Vector x0; // initial state
 

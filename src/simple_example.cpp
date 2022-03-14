@@ -73,16 +73,16 @@ int main() {
 
 
   const double dT = 0.05; // sampling time (s)
-  const size_t nx = 3; // state dimension
-  const size_t nu = 2; // input dimension
-  const size_t nz = 4; // cost dimension (number of elements of R s.t. cost = 0.5*R'R)
-  const size_t nh = 4; // dimension of stagewise Constraint
-  const size_t nh_e = 0; // dimension of end Constraint
-  const size_t num_parameters = 0; // number of parameters
+  const int nx = 3; // state dimension
+  const int nu = 2; // input dimension
+  const int nz = 4; // cost dimension (number of elements of R s.t. cost = 0.5*R'R)
+  const int nh = 4; // dimension of stagewise Constraint
+  const int nh_e = 0; // dimension of end Constraint
+  const int num_parameters = 0; // number of parameters
 
-  const size_t N = 20; // length of control horizon (in steps)
+  const int N = 20; // length of control horizon (in steps)
 
-  size_t Nsim = 600;
+  int Nsim = 600;
 
   std::chrono::steady_clock::time_point begin, end;
   double mean_time_temp = 0.0;
@@ -113,11 +113,11 @@ int main() {
   vurtis::Solver solver(unicycle_model, cost_function, problem_init);
 
 
-  for (size_t idx = 0; idx < Nsim; ++idx) {
+  for (int idx = 0; idx < Nsim; ++idx) {
     // Start clock for iteration timing statistics
     begin = std::chrono::steady_clock::now();
 
-    for (size_t ii = 0; ii <= N; ++ii) {
+    for (int ii = 0; ii <= N; ++ii) {
       x_ref.segment(ii * nx, nx) = desired_trajectory.row(idx + ii);
     }
 
