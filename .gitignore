@@ -4,4 +4,6 @@
 .idea/
 *.csv
 
+/examples/build/
+
 .clang-format

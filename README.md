@@ -34,7 +34,6 @@ The provided `src/simple_example.cpp` performs trajectory tracking with a kinema
 while satisfying input constraints.
 
 ## TODO
-- [ ] extend the cost function hessian to the full nonlinear case, for now the sensitivity assumes separation between functions of state and input
 - [ ] implement terminal cost
 - [ ] include autodiff as a submodule or system dependency
 - [ ] some interface to set OSQP settings during setup
