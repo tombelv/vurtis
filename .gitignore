@@ -1,9 +1,11 @@
 /cmake-build-debug
 /cmake-build-release
 /build
-.idea/
-*.csv
 
-/examples/build/
+/examples/build
+/examples/cmake-build-release
+/examples/cmake-build-debug
 
 .clang-format
+.idea/
+*.csv

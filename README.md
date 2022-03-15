@@ -5,9 +5,9 @@ in a multiple-shooting fashion using the sparse [OSQP](https://osqp.org/) solver
 The goal is to provide a fast - yet simple - C++ NMPC library. While care has been taken to optimize performance, surely
 much more could be done.
 
-For now this works as a template. Everything is still experimental and breaking changes might occur.
+Everything is still experimental and breaking changes might occur.
 
-Eventually the header-only part is going to be an INTERFACE library to be implemented in other projects.
+It can be used by including it as an INTERFACE library, see examples.
 
 ## Requirements
 * Eigen3
@@ -30,7 +30,7 @@ using AD.
 It is possible to define step-wise parameters for the constraints.
 
 ### Example
-The provided `src/simple_example.cpp` performs trajectory tracking with a kinematic unicycle vehicle 
+The provided `examples/simple_example.cpp` performs trajectory tracking with a kinematic unicycle vehicle 
 while satisfying input constraints.
 
 ## TODO
