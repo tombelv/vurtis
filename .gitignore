@@ -9,3 +9,5 @@
 .clang-format
 .idea/
 *.csv
+
+!/examples/data/*
