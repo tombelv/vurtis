@@ -387,11 +387,11 @@ class Solver {
     x_guess_.head(nx_ * N_) = x_guess_.tail(nx_ * N_);
     u_guess_.head(nu_ * (N_ - 1)) = u_guess_.tail(nu_ * (N_ - 1));
 
-    Vector last_x = x_guess_.tail(nx_);
+/*    Vector last_x = x_guess_.tail(nx_);
     Vector last_u = u_guess_.tail(nu_);
     Vector next_guess = model_->integrator(last_x, last_u);
 
-    x_guess_.tail(nx_) = next_guess;
+    x_guess_.tail(nx_) = next_guess;*/
   }
 
   bool SetupQPsolver() {
@@ -475,6 +475,11 @@ class Solver {
 
     return ctrl;
   };
+
+
+  Vector GetStateTrajectory() {return x_guess_;}
+  Vector GetInputTrajectory() {return u_guess_;}
+
 
 
 
