@@ -40,8 +40,8 @@ struct ProblemInit {
   const int nh; // number of constraints (step=0,...,N-1)
   const int nh_e; // number of end-constraints (step=N)
   const int N; // number of steps
-  const int num_parameters; // number of parameters
 
+  Matrix parameters; // initialization of parameters
   Vector x0; // initial state
 
 

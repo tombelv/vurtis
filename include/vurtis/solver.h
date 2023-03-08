@@ -67,7 +67,7 @@ class Solver {
 
     N_ = problemParams.N;
 
-    num_parameters_ = problemParams.num_parameters;
+    parameters_ = problemParams.parameters;
 
     InitMatricesToZero();
 
@@ -97,8 +97,6 @@ class Solver {
 
   void InitMatricesToZero() {
 
-    parameters_ = Matrix::Zero(num_parameters_, N_ + 1);
-
     Ad_list_ = Matrix::Zero(nx_, nx_ * N_);
     Bd_list_ = Matrix::Zero(nx_, nu_ * N_);
     Cd_list_ = Matrix::Zero(nh_, nx_ * N_);
@@ -121,7 +119,6 @@ class Solver {
     ComputeCost();
 
     tripletList.reserve(nx_*nx_ * (N_ + 1) + nu_*nu_ * N_ + 2*nx_*nu_*N_);
-
 
 
     for (int i = 0; i <  N_; ++i) {

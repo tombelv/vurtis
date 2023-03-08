@@ -14,7 +14,7 @@ class Model : public vurtis::ModelBase {
  private:
 // Continuous-time dynamic model of the system for AD
   vurtis::VectorAD Dynamics(const vurtis::VectorAD &state, const vurtis::VectorAD &input) {
-    vurtis::VectorAD state_dot{3};
+    vurtis::VectorAD state_dot(3);
     vurtis::real theta = state[2];
 
     vurtis::real v = input[0];
@@ -27,9 +27,10 @@ class Model : public vurtis::ModelBase {
     return state_dot;
   }
 
-  // dual-sided input constraints
+
   // constraints are of the type g(x,u)>=0
   vurtis::VectorAD Constraint(const vurtis::VectorAD &state, const vurtis::VectorAD &input, const vurtis::Vector &params) {
+    // dual-sided input constraints
     vurtis::VectorAD input_constraint(4);
     input_constraint[0] = input[0] + 1;
     input_constraint[1] = - input[0] + 1;
@@ -53,8 +54,8 @@ class Cost : public vurtis::CostBase {
 
     cost[0] = 15 * (state[0]-state_ref[0]);
     cost[1] = 15 * (state[1]-state_ref[1]);
-    cost[2] = std::sqrt(1) * (input[0]-input_ref[0]);
-    cost[3] = std::sqrt(0.1) * (input[1]-input_ref[1]);
+    cost[2] = 1 * (input[0]-input_ref[0]);
+    cost[3] = 0.1 * (input[1]-input_ref[1]);
 
     return cost;
   }
@@ -82,6 +83,8 @@ int main() {
 
   const int N = 20; // length of control horizon (in steps)
 
+  vurtis::Matrix parameters = vurtis::Matrix::Zero(num_parameters, N+1); // init parameters
+
   int Nsim = 600;
 
   std::chrono::steady_clock::time_point begin, end;
@@ -107,7 +110,7 @@ int main() {
 
   auto unicycle_model = std::make_shared<Model>(dT);
   auto cost_function = std::make_shared<Cost>(x_ref, u_ref);
-  vurtis::ProblemInit problem_init{nx, nu, nz, nh, nh_e, N, num_parameters, x_curr};
+  vurtis::ProblemInit problem_init{nx, nu, nz, nh, nh_e, N, parameters, x_curr};
   vurtis::Solver solver(unicycle_model, cost_function, problem_init);
 
 
