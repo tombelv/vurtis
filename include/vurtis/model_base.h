@@ -22,7 +22,7 @@ class ModelBase {
   //------------------------------------------------------------------------------------------------------------------
 
   // continuous-time Dynamics to be implemented
-  virtual VectorAD Dynamics(const VectorAD &state, const VectorAD &input) = 0;
+  virtual VectorAD Dynamics(VectorAD &state, VectorAD &input) = 0;
 
   // discretization with Runge-Kutta 4th order
   // ns steps over the sampling time interval dt_
@@ -78,8 +78,8 @@ class ModelBase {
 
   // constraints (to be implemented) and their sensitivities
 
-  virtual VectorAD Constraint(const VectorAD &state, const VectorAD &input, const Eigen::VectorXd &params) = 0;
-  virtual VectorAD EndConstraint(const VectorAD &state, const Eigen::VectorXd &params) = 0;
+  virtual VectorAD Constraint(VectorAD &state, VectorAD &input, const Eigen::VectorXd &params) = 0;
+  virtual VectorAD EndConstraint(VectorAD &state, const Eigen::VectorXd &params) = 0;
 
   Matrix Cd(VectorAD &state, VectorAD &input, Eigen::VectorXd &params) {
     return autodiff::jacobian([&](VectorAD &state,

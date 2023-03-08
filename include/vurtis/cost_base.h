@@ -14,10 +14,13 @@ class CostBase {
   Vector u_ref_; // input reference
 
   VectorAD cost_eval_;
+  VectorAD cost_eval_term_;
 
-  virtual VectorAD LeastSquareCost(const VectorAD &state, const VectorAD &input, const Vector &state_ref, const Vector &input_ref) = 0;
+  virtual VectorAD LeastSquareCost(VectorAD &state, VectorAD &input, const Vector &state_ref, const Vector &input_ref) = 0;
+  virtual VectorAD LeastSquareCostTerminal(VectorAD &state, const Vector &state_ref) = 0;
 
-  Matrix GradientCost(VectorAD &state, VectorAD &input, Vector &state_ref, Vector &input_ref) {
+
+    Matrix GradientCost(VectorAD &state, VectorAD &input, Vector &state_ref, Vector &input_ref) {
     return autodiff::jacobian([&](VectorAD &state,
                                            VectorAD &input,
                                            Vector &state_ref,
@@ -26,6 +29,14 @@ class CostBase {
                                        at(state, input, state_ref, input_ref),
                                        cost_eval_);
   }
+
+    Matrix GradientCostTerminal(VectorAD &state, Vector &state_ref) {
+      return autodiff::jacobian([&](VectorAD &state,
+                                    Vector &state_ref) { return LeastSquareCostTerminal(state, state_ref); },
+                                wrt(state),
+                                at(state, state_ref),
+                                cost_eval_term_);
+    }
 
  // void SetXref(const Vector &x_ref) { x_ref_ = x_ref; }
  // void SetUref(const Vector &u_ref) { u_ref_ = u_ref; }

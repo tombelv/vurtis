@@ -103,8 +103,8 @@ class Solver {
     Cd_e = Matrix::Zero(nh_e_, nx_);
     Dd_list_ = Matrix::Zero(nh_, nu_ * N_);
 
-    R_list_ = Matrix::Zero(nz_, N_);
-    dRdx_list = Matrix::Zero(nz_, nx_ * N_);
+    R_list_ = Matrix::Zero(nz_, N_+1);
+    dRdx_list = Matrix::Zero(nz_, nx_ * (N_ + 1));
     dRdu_list = Matrix::Zero(nz_, nu_ * N_);
 
     gradient_ = Vector::Zero(nx_ * (N_ + 1) + nu_ * N_);
@@ -159,9 +159,13 @@ class Solver {
     // !! For now the end cost is set to zero !!
     // Add the end cost_ block (dim: nx_)
     { int i = nx_ * N_;
+
+      int idx_x = i*nx_;
+      Matrix H_dxdx = (dRdx_list.middleCols(i,nx_)).transpose()*dRdx_list.middleCols(i,nx_);
+
       for (int row_idx = 0; row_idx < nx_; ++row_idx) {
         for (int col_idx = 0; col_idx < nx_; ++col_idx)
-          tripletList.push_back(Eigen::Triplet<double>(i + row_idx, i + col_idx, 0.0));
+          tripletList.push_back(Eigen::Triplet<double>(i + row_idx, i + col_idx, H_dxdx(row_idx, col_idx)));
       }
     }
 
@@ -240,7 +244,6 @@ class Solver {
 
     Vector nonzero(nx_*nx_*(N_+1) + nu_*nu_*N_ + 2*nx_*nu_*N_);
 
-
     for (int i = 0; i <  N_; ++i) {
       int idx_x = i*nx_;
       int idx_u = i*nu_;
@@ -253,9 +256,10 @@ class Solver {
     }
 
     // For now the terminal cost is zero
-    { int i = (nx_+nu_)*N_;
+    { int i = N_;
+      Matrix H_dxdx = (dRdx_list.middleCols(i*nx_,nx_)).transpose()*dRdx_list.middleCols(i*nx_,nx_);
       for (int ii = 0; ii < nx_; ++ii)
-        nonzero.segment(nx_*(i + ii), nx_) = Vector::Zero(nx_);
+        nonzero.segment((nx_+nu_)*i*nx_ + nx_*ii, nx_) = H_dxdx.col(ii);
     }
 
 
@@ -288,6 +292,9 @@ class Solver {
       gradient_.segment(i * nx_, nx_) = grad.head(nx_);
       gradient_.segment(nx_*(N_+1) + i * nu_, nu_) = grad.tail(nu_);
     }
+
+    Matrix dR = dRdx_list.middleCols(N_*nx_,nx_);
+    gradient_.segment(N_ * nx_, nx_) = (R_list_.col(N_)).transpose()*dR;
   }
 
 
@@ -329,6 +336,14 @@ class Solver {
 
       R_list_.col(idx) = cost_->cost_eval_.cast<double>();
     }
+
+    VectorAD state = x_guess_.segment(N_ * nx_, nx_);
+    Vector state_ref = cost_->x_ref_.segment(N_ * nx_, nx_);
+
+    Matrix dR =  cost_->GradientCostTerminal(state,state_ref);
+    dRdx_list.block(0, N_ * nx_, dR.rows(), nx_) = dR;
+    R_list_.block(0, N_, dR.rows(), 1) = cost_->cost_eval_term_.cast<double>();
+
 
   }
 
@@ -433,7 +448,6 @@ class Solver {
     UpdateConstraintMatrix();
     UpdateHessian();
     UpdateGradient();
-
     SetXcurrent(xcurrent);
     UpdateBounds();
 

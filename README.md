@@ -34,9 +34,9 @@ The provided `examples/simple_example.cpp` performs trajectory tracking with a k
 while satisfying input constraints.
 
 ## TODO
-- [ ] implement terminal cost
 - [ ] include autodiff as a submodule or system dependency
 - [ ] some interface to set OSQP settings during setup
 - [ ] maybe rewrite the OSQP wrapper to avoid unnecessary checks
+- [ ] interface with qpSWIFT
 
 

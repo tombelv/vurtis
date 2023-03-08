@@ -13,33 +13,35 @@ class Model : public vurtis::ModelBase {
 
  private:
 // Continuous-time dynamic model of the system for AD
-  vurtis::VectorAD Dynamics(const vurtis::VectorAD &state, const vurtis::VectorAD &input) {
+  vurtis::VectorAD Dynamics(vurtis::VectorAD &state, vurtis::VectorAD &input) {
     vurtis::VectorAD state_dot(3);
     vurtis::real theta = state[2];
+    vurtis::real R = 0.1;
+    vurtis::real d = 0.2;
 
-    vurtis::real v = input[0];
-    vurtis::real omega = input[1];
+    vurtis::real wr = input[0];
+    vurtis::real wl = input[1];
 
-    state_dot[0] = v * cos(theta);
-    state_dot[1] = v * sin(theta);
-    state_dot[2] = omega;
+    state_dot[0] = (wr+wl)*R/2 * cos(theta);
+    state_dot[1] = (wr+wl)*R/2 * sin(theta);
+    state_dot[2] = (wr-wl)*R/d;
 
     return state_dot;
   }
 
 
   // constraints are of the type g(x,u)>=0
-  vurtis::VectorAD Constraint(const vurtis::VectorAD &state, const vurtis::VectorAD &input, const vurtis::Vector &params) {
+  vurtis::VectorAD Constraint(vurtis::VectorAD &state, vurtis::VectorAD &input, const vurtis::Vector &params) {
     // dual-sided input constraints
     vurtis::VectorAD input_constraint(4);
-    input_constraint[0] = input[0] + 1;
-    input_constraint[1] = - input[0] + 1;
-    input_constraint[2] = input[1] + 1;
-    input_constraint[3] = - input[1] + 1;
+    input_constraint[0] = input[0] + 3;
+    input_constraint[1] = - input[0] + 3;
+    input_constraint[2] = input[1] + 3;
+    input_constraint[3] = - input[1] + 3;
 
     return input_constraint;
   }
-  vurtis::VectorAD EndConstraint(const vurtis::VectorAD &state, const vurtis::Vector &params) {}
+  vurtis::VectorAD EndConstraint(vurtis::VectorAD &state, const vurtis::Vector &params) {}
 
 };
 
@@ -48,17 +50,27 @@ class Cost : public vurtis::CostBase {
   explicit Cost(const vurtis::Vector& x_ref, const vurtis::Vector& u_ref) : vurtis::CostBase(x_ref, u_ref) {}
 
   // function LeastSquareCost: R(x) such that CostFunctionPointwise=0.5*R(x)'*R(x)
-  vurtis::VectorAD LeastSquareCost(const vurtis::VectorAD &state, const vurtis::VectorAD &input, const vurtis::Vector &state_ref, const vurtis::Vector &input_ref) {
+  vurtis::VectorAD LeastSquareCost(vurtis::VectorAD &state, vurtis::VectorAD &input, const vurtis::Vector &state_ref, const vurtis::Vector &input_ref) {
 
     vurtis::VectorAD cost(4);
 
-    cost[0] = 15 * (state[0]-state_ref[0]);
-    cost[1] = 15 * (state[1]-state_ref[1]);
-    cost[2] = 1 * (input[0]-input_ref[0]);
-    cost[3] = 0.1 * (input[1]-input_ref[1]);
+    cost[0] = 0.0 * (state[0]-state_ref[0]);
+    cost[1] = 0.0 * (state[1]-state_ref[1]);
+    cost[2] = 0.5 * (input[0]-input_ref[0]);
+    cost[3] = 0.5 * (input[1]-input_ref[1]);
 
     return cost;
   }
+
+    vurtis::VectorAD LeastSquareCostTerminal(vurtis::VectorAD &state, const vurtis::Vector &state_ref) {
+
+      vurtis::VectorAD cost(2);
+
+      cost[0] = 150 * (state[0]-state_ref[0]);
+      cost[1] = 150 * (state[1]-state_ref[1]);
+
+      return cost;
+    }
 };
 
 
