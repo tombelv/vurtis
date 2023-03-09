@@ -7,7 +7,7 @@
 #include "csvparser.h"
 
 // Simple kinematic unicycle model with input constraints
-class Model : private vurtis::ModelBase {
+class Model : public vurtis::ModelBase {
  public:
 
     explicit Model(const double dt, const Eigen::VectorXd & params) : ModelBase(dt), nominal_params_(params) {}
@@ -31,7 +31,7 @@ class Model : private vurtis::ModelBase {
       return state_dot;
     }
 
-    vurtis::Vector integrator(const vurtis::Vector &state_,const vurtis::Vector &input_) {
+/*    vurtis::Vector integrator(const vurtis::Vector &state_,const vurtis::Vector &input_) {
       vurtis::VectorAD state = state_;
       vurtis::VectorAD input = input_;
 
@@ -57,7 +57,7 @@ class Model : private vurtis::ModelBase {
 
       return state_next.cast<double>();
 
-    }
+    }*/
 
  private:
     // Continuous-time dynamic model of the system for AD

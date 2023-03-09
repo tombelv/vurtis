@@ -6,8 +6,6 @@ namespace vurtis {
 
 class ModelBase {
 
-protected:
-    const double dt_;
 
 public:
 
@@ -18,6 +16,8 @@ public:
   VectorAD F_eval_;
   VectorAD h_eval_;
   VectorAD he_eval_;
+
+  const double dt_;
 
   //------------------------------------------------------------------------------------------------------------------
 
