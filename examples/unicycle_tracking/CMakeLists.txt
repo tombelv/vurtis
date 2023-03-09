@@ -16,8 +16,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 
 # add the main vurtis directory
-add_subdirectory(.. build)
-
+add_subdirectory(../.. build)
 
 add_executable(${TargetName} ${TargetName}.cpp)
 

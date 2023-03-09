@@ -10,4 +10,8 @@
 .idea/
 *.csv
 
-!/examples/data/*
+!/examples/unicycle_tracking/data/state_trajectory.csv
+/examples/unicycle_tracking/cmake-build-release/
+/examples/unicycle_tracking/cmake-build-debug/
+
+simple_example

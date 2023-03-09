@@ -14,8 +14,8 @@ import matplotlib.pyplot as plt
 
 desired = np.loadtxt("data/trajectory_curve_20Hz.csv", delimiter=",")
 
-executed = np.loadtxt("state_trajectory.csv", delimiter=",")
-times = np.loadtxt("time_step.csv", delimiter=",")
+executed = np.loadtxt("data/state_trajectory.csv", delimiter=",")
+times = np.loadtxt("data/time_step.csv", delimiter=",")
 
 plt.plot(executed[:,0],executed[:,1])
 plt.plot(desired[:,0],desired[:,1])

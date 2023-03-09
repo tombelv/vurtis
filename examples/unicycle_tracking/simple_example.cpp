@@ -54,8 +54,8 @@ class Cost : public vurtis::CostBase {
 
     vurtis::VectorAD cost(4);
 
-    cost[0] = 0.0 * (state[0]-state_ref[0]);
-    cost[1] = 0.0 * (state[1]-state_ref[1]);
+    cost[0] = 10 * (state[0]-state_ref[0]);
+    cost[1] = 10 * (state[1]-state_ref[1]);
     cost[2] = 0.5 * (input[0]-input_ref[0]);
     cost[3] = 0.5 * (input[1]-input_ref[1]);
 
@@ -79,8 +79,8 @@ int main() {
 
   std::ofstream state_trajectory;
   std::ofstream time_step;
-  state_trajectory.open("state_trajectory.csv");
-  time_step.open("time_step.csv");
+  state_trajectory.open("data/state_trajectory.csv");
+  time_step.open("data/time_step.csv");
   // Load data
   Eigen::MatrixXd desired_trajectory = load_csv<Eigen::MatrixXd>("data/trajectory_curve_20Hz.csv");
 
