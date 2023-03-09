@@ -14,4 +14,8 @@
 /examples/unicycle_tracking/cmake-build-release/
 /examples/unicycle_tracking/cmake-build-debug/
 
+/examples/unicycle_regulation/cmake-build-release/
+/examples/unicycle_regulation/cmake-build-debug/
+
 simple_example
+regulation

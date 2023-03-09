@@ -6,10 +6,10 @@ namespace vurtis {
 
 class ModelBase {
 
- private:
-  const double dt_;
+protected:
+    const double dt_;
 
- public:
+public:
 
   ModelBase(double dt) : dt_{dt} { }
 
@@ -82,31 +82,26 @@ class ModelBase {
   virtual VectorAD EndConstraint(VectorAD &state, const Eigen::VectorXd &params) = 0;
 
   Matrix Cd(VectorAD &state, VectorAD &input, Eigen::VectorXd &params) {
-    return autodiff::jacobian([&](VectorAD &state,
-                                           VectorAD &input,
-                                           Eigen::VectorXd &params) { return Constraint(state, input, params); },
-                                       wrt(state),
-                                       at(state, input, params),
-                                       h_eval_);
+    return autodiff::jacobian([&](VectorAD &state, VectorAD &input, Eigen::VectorXd &params){return Constraint(state, input, params); },
+                              wrt(state),
+                              at(state, input, params),
+                              h_eval_);
   }
 
   Matrix Dd(VectorAD &state, VectorAD &input, Eigen::VectorXd &params) {
-    return autodiff::jacobian([&](VectorAD &state,
-                                           VectorAD &input,
-                                           Eigen::VectorXd &params) { return Constraint(state, input, params); },
-                                       wrt(input),
-                                       at(state, input, params),
-                                       h_eval_);
+    return autodiff::jacobian([&](VectorAD &state, VectorAD &input, Eigen::VectorXd &params) { return Constraint(state, input, params); },
+                              wrt(input),
+                              at(state, input, params),
+                              h_eval_);
   }
 
 
 
   Matrix Cd_e(VectorAD &state, Eigen::VectorXd &params) {
-    return autodiff::jacobian([&](VectorAD &state,
-                                           Eigen::VectorXd &params) { return EndConstraint(state, params); },
-                                       wrt(state),
-                                       at(state, params),
-                                       he_eval_);
+    return autodiff::jacobian([&](VectorAD &state, Eigen::VectorXd &params) { return EndConstraint(state, params); },
+                              wrt(state),
+                              at(state, params),
+                              he_eval_);
   }
   //------------------------------------------------------------------------------------------------------------------
 
