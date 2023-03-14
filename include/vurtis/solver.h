@@ -399,11 +399,11 @@ class Solver {
     x_guess_.head(nx_ * N_) = x_guess_.tail(nx_ * N_);
     u_guess_.head(nu_ * (N_ - 1)) = u_guess_.tail(nu_ * (N_ - 1));
 
-/*    Vector last_x = x_guess_.tail(nx_);
+    Vector last_x = x_guess_.tail(nx_);
     Vector last_u = u_guess_.tail(nu_);
     Vector next_guess = model_->integrator(last_x, last_u);
 
-    x_guess_.tail(nx_) = next_guess;*/
+    x_guess_.tail(nx_) = next_guess;
   }
 
   bool SetupQPsolver() {
@@ -411,9 +411,9 @@ class Solver {
     //QPsolver_.settings()->SetVerbosity(false);
     QPsolver_.settings()->setWarmStart(true);
     QPsolver_.settings()->setPolish(true);
-    QPsolver_.settings()->setMaxIteration(500);
-    QPsolver_.settings()->setAbsoluteTolerance(0.001);
-    QPsolver_.settings()->setRelativeTolerance(0.001);
+    QPsolver_.settings()->setMaxIteration(150);
+    QPsolver_.settings()->setAbsoluteTolerance(1e-4);
+    QPsolver_.settings()->setRelativeTolerance(1e-4);
 
     // Set the Initial data of the QP solver
     QPsolver_.data()->setNumberOfVariables(nx_ * (N_ + 1) + nu_ * N_);
@@ -464,6 +464,8 @@ class Solver {
 
   // An example division of preparation and feedback phase.
   void Preparation() {
+    UpdateSolutionGuess();
+
     ComputeSensitivitiesAndResiduals();
     ComputeCost();
 
@@ -482,10 +484,12 @@ class Solver {
 
     Vector ctrl = u_guess_.head(nu_) + QPsolver_.getSolution().segment(nx_ * (N_ + 1), nu_);
 
-    UpdateSolutionGuess();
-
     return ctrl;
   };
+
+  Vector GetMultipliers() {
+    return QPsolver_.getDualSolution();
+  }
 
 
   Vector GetStateTrajectory() {return x_guess_;}
