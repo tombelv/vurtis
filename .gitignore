@@ -10,7 +10,7 @@
 .idea/
 *.csv
 
-!/examples/unicycle_tracking/data/state_trajectory.csv
+!/examples/unicycle_tracking/data/trajectory_curve_20Hz.csv
 /examples/unicycle_tracking/cmake-build-release/
 /examples/unicycle_tracking/cmake-build-debug/
 
