@@ -64,7 +64,8 @@ public:
   }
 
   // Dynamics sensitivities
-  // lambda functions are needed to pass member functions to autodiff
+  // lambda functions are needed to pass member functions to autodiff as
+  // suggested in https://github.com/autodiff/autodiff/issues/51
   Matrix Ad(VectorAD &state, VectorAD &input) {
     return autodiff::jacobian([&](VectorAD &state, VectorAD &input) {return step(state,input); },
                               wrt(state), at(state, input), F_eval_);
