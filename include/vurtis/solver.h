@@ -85,7 +85,7 @@ class Solver {
 
     InitHessian();
 
-    InitGradient();
+    ComputeGradient();
 
     InitConstraintMatrix();
 
@@ -177,18 +177,22 @@ class Solver {
   }
 
 
-
-  void InitGradient() {
+// Commented out because not used anymore,kept for the moment
+/*  void InitGradient() {
 
     for(int i = 0; i < N_; ++i) {
       Matrix dR(nz_,nx_+nu_);
       dR.leftCols(nx_) = dRdx_list.middleCols(i*nx_,nx_);
       dR.rightCols(nu_) = dRdu_list.middleCols(i*nu_,nu_);
-      Vector grad = (R_list_.col(i)).transpose()*dR;
+      Vector grad = dR.transpose()*R_list_.col(i);
       gradient_.segment(i * nx_, nx_) = grad.head(nx_);
       gradient_.segment(nx_*(N_+1) + i * nu_, nu_) = grad.tail(nu_);
     }
-  }
+    // Terminal cost
+    Matrix dR = dRdx_list.middleCols(N_*nx_,nx_);
+    gradient_.segment(N_ * nx_, nx_) = dR.transpose()*R_list_.col(N_);
+
+  }*/
 
   void InitConstraintMatrix() {
     std::vector<Eigen::Triplet<double>> tripletList;
@@ -283,18 +287,18 @@ class Solver {
 
   }
 
-  void UpdateGradient() {
+  void ComputeGradient() {
 
     for(int i = 0; i < N_; ++i) {
       Matrix dR(nz_,nx_+nu_);
       dR << dRdx_list.middleCols(i*nx_,nx_), dRdu_list.middleCols(i*nu_,nu_);
-      Vector grad = (R_list_.col(i)).transpose()*dR;
+      Vector grad = dR.transpose()*R_list_.col(i);
       gradient_.segment(i * nx_, nx_) = grad.head(nx_);
       gradient_.segment(nx_*(N_+1) + i * nu_, nu_) = grad.tail(nu_);
     }
-
+    // Terminal cost
     Matrix dR = dRdx_list.middleCols(N_*nx_,nx_);
-    gradient_.segment(N_ * nx_, nx_) = (R_list_.col(N_)).transpose()*dR;
+    gradient_.segment(N_ * nx_, nx_) = dR.transpose()*R_list_.col(N_);
   }
 
 
@@ -447,7 +451,7 @@ class Solver {
 
     UpdateConstraintMatrix();
     UpdateHessian();
-    UpdateGradient();
+    ComputeGradient();
     SetXcurrent(xcurrent);
     UpdateBounds();
 
@@ -471,7 +475,7 @@ class Solver {
 
     UpdateConstraintMatrix();
     UpdateHessian();
-    UpdateGradient();
+    ComputeGradient();
   };
 
   Vector Feedback(Vector &xcurrent) {
@@ -489,6 +493,12 @@ class Solver {
 
   Vector GetMultipliers() {
     return QPsolver_.getDualSolution();
+  }
+
+
+  void debug() {
+    std::cout << "Hessian matrix:\n" << hessian_matrix_ << std::endl;
+    std::cout << "Constraint matrix:\n" <<  constraint_matrix_ << std::endl;
   }
 
 
