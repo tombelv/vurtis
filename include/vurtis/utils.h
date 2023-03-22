@@ -7,6 +7,7 @@
 
 namespace vurtis {
   // autodiff
+  using MatrixAD = autodiff::MatrixXdual;
   using VectorAD = autodiff::VectorXdual;
   using ScalarAD = autodiff::dual;
   // eigen
