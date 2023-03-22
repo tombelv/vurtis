@@ -9,18 +9,19 @@
 // Simple kinematic unicycle model with input constraints
 class Model : public vurtis::ModelBase {
  public:
-  explicit Model(double dt) : ModelBase(dt) {}
+  explicit Model(const double dt, const int nx, const int nu, const int nh)
+      :ModelBase(dt, nx, nu, nh) {}
 
  private:
 // Continuous-time dynamic model of the system for AD
   vurtis::VectorAD Dynamics(vurtis::VectorAD &state, vurtis::VectorAD &input) {
     vurtis::VectorAD state_dot(3);
-    vurtis::real theta = state[2];
-    vurtis::real R = 0.1;
-    vurtis::real d = 0.2;
+    vurtis::ScalarAD theta = state[2];
+    vurtis::ScalarAD R = 0.1;
+    vurtis::ScalarAD d = 0.2;
 
-    vurtis::real wr = input[0];
-    vurtis::real wl = input[1];
+    vurtis::ScalarAD wr = input[0];
+    vurtis::ScalarAD wl = input[1];
 
     state_dot[0] = (wr+wl)*R/2 * cos(theta);
     state_dot[1] = (wr+wl)*R/2 * sin(theta);
@@ -120,7 +121,7 @@ int main() {
   u_ref = Eigen::Vector2d(0.0,0.0).replicate(N, 1);
   // ------------------------------------------------------------------------------------------------------------------
 
-  auto unicycle_model = std::make_shared<Model>(dT);
+  auto unicycle_model = std::make_shared<Model>(dT, nx, nu, nh);
   auto cost_function = std::make_shared<Cost>(x_ref, u_ref);
   vurtis::ProblemInit problem_init{nx, nu, nz, nh, nh_e, N, parameters, x_curr};
   vurtis::Solver solver(unicycle_model, cost_function, problem_init);
