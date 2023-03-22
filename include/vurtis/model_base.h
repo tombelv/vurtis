@@ -9,7 +9,7 @@ class ModelBase {
 
 public:
 
-  ModelBase(double dt) : dt_{dt} { }
+  ModelBase(double dt, int nx, int nu, int nh) : dt_(dt), nx_(nx), nu_(nu), nh_(nh) {}
 
 
   // storing evaluation from sensitivity computed with forward AD
@@ -18,11 +18,18 @@ public:
   VectorAD he_eval_;
 
   const double dt_;
+  const int nx_;
+  const int nu_;
+  const int nh_;
 
   //------------------------------------------------------------------------------------------------------------------
 
   // continuous-time Dynamics to be implemented
   virtual VectorAD Dynamics(VectorAD &state, VectorAD &input) = 0;
+
+  virtual VectorAD Dynamics(VectorAD &state, VectorAD &input, VectorAD &params) {
+    return Dynamics(state, input);
+  }
 
   // discretization with Runge-Kutta 4th order
   // ns steps over the sampling time interval dt_
@@ -52,6 +59,31 @@ public:
     return state_next;
   }
 
+    VectorAD step(VectorAD &state, VectorAD &input, VectorAD &params) {
+
+      VectorAD state_next = state;
+
+      int ns = 1;
+      double h = dt_ / ns;
+
+      for (int i = 0; i < ns; ++i) {
+        VectorAD k1 = Dynamics(state, input, params);
+
+        VectorAD temp1 = state + 0.5 * k1 * h;
+        VectorAD k2 = Dynamics(temp1, input, params);
+
+        VectorAD temp2 = state + 0.5 * k2 * h;
+        VectorAD k3 = Dynamics(temp2, input, params);
+
+        VectorAD temp3 = state + k3 * h;
+        VectorAD k4 = Dynamics(temp3, input, params);
+
+        state_next += (h / 6) * (k1 + 2 * k2 + 2 * k3 + k4);
+      }
+
+      return state_next;
+    }
+
   // Integrator interface for plain Eigen vectors
   Vector integrator(const Vector &state_,const Vector &input_) {
     VectorAD state = state_;
@@ -75,36 +107,55 @@ public:
     return autodiff::jacobian([&](VectorAD &state, VectorAD &input) {return step(state,input);},
                               wrt(input), at(state, input), F_eval_);
   }
+
+  virtual MatrixAD dFdxu(VectorAD &state, VectorAD &input, VectorAD &params) {
+    MatrixAD res(nx_, nx_+nu_);
+    res.leftCols(nx_) = Ad(state, input);
+    res.rightCols(nu_) = Bd(state, input);
+
+    return res;
+  }
+
   //------------------------------------------------------------------------------------------------------------------
 
   // constraints (to be implemented) and their sensitivities
 
-  virtual VectorAD Constraint(VectorAD &state, VectorAD &input, const Eigen::VectorXd &params) = 0;
-  virtual VectorAD EndConstraint(VectorAD &state, const Eigen::VectorXd &params) = 0;
+  virtual VectorAD Constraint(VectorAD &state, VectorAD &input, const Vector &params) = 0;
+  virtual VectorAD EndConstraint(VectorAD &state, const Vector &params) = 0;
 
-  Matrix Cd(VectorAD &state, VectorAD &input, Eigen::VectorXd &params) {
-    return autodiff::jacobian([&](VectorAD &state, VectorAD &input, Eigen::VectorXd &params){return Constraint(state, input, params); },
+  Matrix Cd(VectorAD &state, VectorAD &input, const Vector &params) {
+    return autodiff::jacobian([&](VectorAD &state, VectorAD &input, const Vector &params){return Constraint(state, input, params); },
                               wrt(state),
                               at(state, input, params),
                               h_eval_);
   }
 
-  Matrix Dd(VectorAD &state, VectorAD &input, Eigen::VectorXd &params) {
-    return autodiff::jacobian([&](VectorAD &state, VectorAD &input, Eigen::VectorXd &params) { return Constraint(state, input, params); },
+  Matrix Dd(VectorAD &state, VectorAD &input, const Vector &params) {
+    return autodiff::jacobian([&](VectorAD &state, VectorAD &input, const Vector &params) { return Constraint(state, input, params); },
                               wrt(input),
                               at(state, input, params),
                               h_eval_);
   }
 
+  virtual MatrixAD dConstrdxu(VectorAD &state, VectorAD &input, VectorAD &params, const Vector &nlp_params) {
+    MatrixAD res(nh_, nx_+nu_);
+    res.leftCols(nx_) = Cd(state, input, nlp_params);
+    res.rightCols(nu_) = Dd(state, input, nlp_params);
+
+    return res;
+  }
 
 
-  Matrix Cd_e(VectorAD &state, Eigen::VectorXd &params) {
-    return autodiff::jacobian([&](VectorAD &state, Eigen::VectorXd &params) { return EndConstraint(state, params); },
+  Matrix Cd_e(VectorAD &state, Vector &params) {
+    return autodiff::jacobian([&](VectorAD &state, Vector &params) { return EndConstraint(state, params); },
                               wrt(state),
                               at(state, params),
                               he_eval_);
   }
   //------------------------------------------------------------------------------------------------------------------
+
+  virtual Vector GetModelParams() const {};
+
 
 };
 
