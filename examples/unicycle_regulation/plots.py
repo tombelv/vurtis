@@ -1,6 +1,3 @@
-import os,sys
-
-
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -13,17 +10,33 @@ import matplotlib.pyplot as plt
 # })
 
 executed = np.loadtxt("data/state_trajectory.csv", delimiter=",")
-times = np.loadtxt("data/time_step.csv", delimiter=",")
+control = np.loadtxt("data/input_trajectory.csv", delimiter=",")
 
-plt.plot(executed[:,0],executed[:,1])
+executed_p = np.loadtxt("data/state_trajectory_p.csv", delimiter=",")
+control_p = np.loadtxt("data/input_trajectory_p.csv", delimiter=",")
+
+sensitivity = np.loadtxt("data/sensitivity.csv", delimiter=",")
+#times = np.loadtxt("data/time_step.csv", delimiter=",")
+
+print((executed_p[0, 0:-1:3]-executed[0, 0:-1:3])/1e-6 - sensitivity[4, 0:-1:3])
+print((executed_p[0, 1:-1:3]-executed[0, 1:-1:3])/1e-6 - sensitivity[4, 1:-1:3])
+print((executed_p[0, 2:-1:3]-executed[0, 2:-1:3])/1e-6 - sensitivity[4, 2:-1:3])
+
+
+plt.plot(executed[:, 0], executed[:, 1])
 plt.show()
 
-plt.plot(np.arange(len(executed)),executed[:,3])
-plt.plot(np.arange(len(executed)),executed[:,4])
+
+plt.plot((executed_p[0, 2:-1:3]-executed[0, 2:-1:3])/(1e-6))
+plt.plot(sensitivity[4, 2:-1:3])
 plt.show()
 
-plt.plot(np.arange(len(times)),times)
+plt.plot(np.arange(len(control)), control[:, 0])
+plt.plot(np.arange(len(control)), control[:, 1])
 plt.show()
+
+#plt.plot(np.arange(len(times)), times)
+#plt.show()
 
 
 

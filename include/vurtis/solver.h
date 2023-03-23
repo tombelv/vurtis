@@ -1,19 +1,22 @@
 #pragma once
-// osqp-eigen
-#include "OsqpEigen/OsqpEigen.h"
 
+#include "OsqpEigen/OsqpEigen.h"
 #include "vurtis/cost_base.h"
 #include "vurtis/model_base.h"
 #include "utils.h"
+#include "csvparser.h"
+
 
 namespace vurtis {
 
 class Solver {
   friend OsqpEigen::Solver;
 
- private:
+private:
 
-  int nx_;
+    std::ofstream sensitivity_;
+    int nx_;
+
   int nu_;
   int nz_;
   int nh_;
@@ -33,6 +36,8 @@ class Solver {
 
   Vector x_guess_;
   Vector u_guess_;
+
+  Vector dw_;
 
   Matrix parameters_;
 
@@ -58,6 +63,8 @@ class Solver {
   Solver(const std::shared_ptr<ModelBase> model, const std::shared_ptr<CostBase> cost, const ProblemInit &problemParams) : model_{model}, cost_{cost} {
 
     x_current_ = problemParams.x0;
+
+    sensitivity_.open("data/sensitivity.csv");
 
     nx_ = problemParams.nx;
     nu_ = problemParams.nu;
@@ -240,7 +247,8 @@ class Solver {
   }
 
   void InitSolutionGuess() {
-    x_guess_ = cost_->x_ref_;
+    //x_guess_ = cost_->x_ref_;
+    x_guess_ = x_current_.replicate(N_+1,1);
     u_guess_ = cost_->u_ref_;
   }
 
@@ -397,9 +405,11 @@ class Solver {
 
   // Performs shifting repeating the last input
   void UpdateSolutionGuess() {
-    x_guess_ += QPsolver_.getSolution().head(nx_ * (N_ + 1));
-    u_guess_ += QPsolver_.getSolution().tail(nu_ * N_);
+    x_guess_ += dw_.head(nx_ * (N_ + 1));
+    u_guess_ += dw_.tail(nu_ * N_);
+  }
 
+  void ShiftInitialization() {
     x_guess_.head(nx_ * N_) = x_guess_.tail(nx_ * N_);
     u_guess_.head(nu_ * (N_ - 1)) = u_guess_.tail(nu_ * (N_ - 1));
 
@@ -412,12 +422,12 @@ class Solver {
 
   bool SetupQPsolver() {
     // Settings
-    //QPsolver_.settings()->SetVerbosity(false);
+    QPsolver_.settings()->setVerbosity(false);
     QPsolver_.settings()->setWarmStart(true);
     QPsolver_.settings()->setPolish(true);
-    QPsolver_.settings()->setMaxIteration(150);
-    QPsolver_.settings()->setAbsoluteTolerance(1e-4);
-    QPsolver_.settings()->setRelativeTolerance(1e-4);
+    QPsolver_.settings()->setMaxIteration(500);
+    QPsolver_.settings()->setAbsoluteTolerance(1e-8);
+    QPsolver_.settings()->setRelativeTolerance(1e-8);
 
     // Set the Initial data of the QP solver
     QPsolver_.data()->setNumberOfVariables(nx_ * (N_ + 1) + nu_ * N_);
@@ -458,6 +468,8 @@ class Solver {
     UpdateQPsolver();
     QPsolver_.solveProblem();
 
+    dw_ = QPsolver_.getSolution();
+
     Vector ctrl = u_guess_.head(nu_) + QPsolver_.getSolution().segment(nx_ * (N_ + 1), nu_);
 
     UpdateSolutionGuess();
@@ -486,12 +498,124 @@ class Solver {
     UpdateQPsolver();
     QPsolver_.solveProblem();
 
+    dw_ = QPsolver_.getSolution();
+
     Vector ctrl = u_guess_.head(nu_) + QPsolver_.getSolution().segment(nx_ * (N_ + 1), nu_);
 
     return ctrl;
   };
 
-  Vector GetMultipliers() {
+  VectorAD ConstraintStack(const Vector & w_guess, VectorAD & w, VectorAD & params) {
+
+    VectorAD g(nx_ * (N_+1) + nh_ * N_ + nh_e_);
+    g.setZero();
+
+    VectorAD dx = w.head(nx_ * (N_+1));
+    VectorAD du = w.tail(nu_*N_);
+
+    g.head(nx_) = dx.head(nx_) + w_guess.head(nx_) - params.head(nx_);
+
+    for(int i = 0; i<N_; ++i) {
+      VectorAD xk_guess = w_guess.segment(i*nx_, nx_);
+      VectorAD uk_guess = w_guess.segment(nx_ * (N_+1) + i*nu_, nu_);
+      VectorAD model_params = params.tail(params.size()-nx_);
+      MatrixAD dF = model_->dFdxu(xk_guess, uk_guess, model_params);
+      g.segment((i+1)*nx_, nx_) = dx.segment((i+1)*nx_, nx_) + w_guess.segment((i+1)*nx_, nx_)
+                                           - dF.leftCols(nx_)*dx.segment(i*nx_, nx_)
+                                           - dF.middleCols(nx_, nu_)*du.segment(i*nu_, nu_)
+                                           - model_->step(xk_guess,uk_guess, model_params);
+
+      MatrixAD dC = model_->dConstrdxu(xk_guess, uk_guess, model_params, parameters_.col(i));
+      g.segment(nx_ * (N_+1) + i*nh_, nh_) =  dC.leftCols(nx_)*dx.segment(i*nx_, nx_)
+                                                      + dC.middleCols(nx_, nu_)*du.segment(i*nu_, nu_)
+                                                      + model_->Constraint(xk_guess,uk_guess, parameters_.col(i));
+    }
+
+    return g;
+  }
+
+  /// This computes the constraint matrix in an AD-enabled way
+  VectorAD dLdw(const Vector & w_guess, VectorAD & params) {
+    MatrixAD res(nx_ * (N_+1) + nh_ * N_ + nh_e_, w_guess.size());
+    res.setZero();
+
+    res.topLeftCorner(nx_ * (N_+1), nx_ * (N_+1)) = MatrixAD::Identity(nx_ * (N_+1), nx_ * (N_+1));
+
+    for(int i = 0; i<N_; ++i) {
+      VectorAD xk_guess = w_guess.segment(i*nx_, nx_);
+      VectorAD uk_guess = w_guess.segment(nx_ * (N_+1) + i*nu_, nu_);
+      VectorAD model_params = params.tail(params.size()-nx_);
+
+      MatrixAD dF = model_->dFdxu(xk_guess, uk_guess, model_params);
+      MatrixAD dC = model_->dConstrdxu(xk_guess, uk_guess, model_params, parameters_.col(i));
+
+      res.block((i+1)*nx_, i*nx_, nx_, nx_) = -dF.leftCols(nx_);
+      res.block((i+1)*nx_, nx_ * (N_+1) + i*nu_, nx_, nu_) = -dF.rightCols(nu_);
+
+      res.block(nx_ * (N_+1) + i*nh_, i*nx_, nh_, nx_) = dC.leftCols(nx_);
+      res.block(nx_ * (N_+1) + i*nh_, nx_*(N_+1)+ i*nu_, nh_, nu_) = dC.rightCols(nu_);
+    }
+
+    return this->GetMultipliers().transpose()*res;
+  }
+
+
+
+  void ComputeSensitivity() {
+
+    Vector w_guess(dw_.size());
+    w_guess << x_guess_, u_guess_;
+
+    VectorAD w(dw_);
+
+    VectorAD param(nx_ + model_->GetModelParams().size());
+    param << x_current_, model_->GetModelParams();
+
+    // Compute the set of active inequality constraints by checking the multipliers
+    Vector multipliers = this->GetMultipliers();
+    std::vector<int> active_constraints;
+    active_constraints.reserve(nx_*(N_+1) + nh_ * N_ + nh_e_);
+    for(int i=0; i<nx_*(N_+1); ++i) active_constraints.push_back(i);
+    for(int i=nx_*(N_+1); i<nx_*(N_+1) + nh_ * N_ + nh_e_; ++i) {
+      if(abs(multipliers(i))>1e-6) active_constraints.push_back(i);
+    }
+
+    Matrix active_proj_matrix(active_constraints.size(), constraint_matrix_.rows());
+    active_proj_matrix.setZero();
+    for(int i = 0; i<active_proj_matrix.rows(); ++i) {
+      active_proj_matrix(i, active_constraints[i]) = 1.0;
+    }
+
+    Matrix H = hessian_matrix_;
+    Matrix Jx = active_proj_matrix*constraint_matrix_;
+
+    Matrix KKT_matrix = Eigen::MatrixXd::Zero(H.rows() + Jx.rows(), H.rows() + Jx.rows());
+    KKT_matrix.topLeftCorner(H.rows(), H.rows()) = H;
+    KKT_matrix.bottomLeftCorner(Jx.rows(), Jx.cols()) = Jx;
+    KKT_matrix.topRightCorner(Jx.cols(), Jx.rows()) = Jx.transpose();
+
+
+    Matrix dLwdp = jacobian([&](const Vector & w_guess, VectorAD & params) {return dLdw(w_guess, params);}, wrt(param), at(w_guess, param));
+
+    Matrix dCdp = active_proj_matrix*jacobian(
+        [&](const Vector &w_guess, VectorAD &w, VectorAD &params) { return ConstraintStack(w_guess, w, params); },
+        wrt(param), at(w_guess, w, param));
+
+
+    Matrix rightTerm(dLwdp.rows()+dCdp.rows(), param.size());
+    rightTerm << dLwdp, dCdp;
+
+    Matrix paramSensitivity = KKT_matrix.partialPivLu().solve(-rightTerm);
+
+    //Matrix paramSensitivity = -KKT_matrix.inverse()*(rightTerm);
+    //std::cout << paramSensitivity << std::endl;
+
+    sensitivity_ << paramSensitivity.topRows(nx_*(N_+1)).transpose().format(CSVFormat) << "\n";
+
+
+  }
+
+  const Vector GetMultipliers() {
     return QPsolver_.getDualSolution();
   }
 
@@ -504,10 +628,6 @@ class Solver {
 
   Vector GetStateTrajectory() {return x_guess_;}
   Vector GetInputTrajectory() {return u_guess_;}
-
-
-
-
 
 
 };

@@ -1,7 +1,10 @@
+#pragma once
+
 #include <Eigen/Dense>
 #include <vector>
 #include <fstream>
 
+const static Eigen::IOFormat CSVFormat(Eigen::FullPrecision, Eigen::DontAlignCols, ", ", "\n");
 
 template<typename M>
 M load_csv (const std::string & path) {
