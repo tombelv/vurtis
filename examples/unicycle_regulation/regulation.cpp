@@ -93,7 +93,7 @@ int main() {
     // Iteration timing
     end = std::chrono::steady_clock::now();
     elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()
-        / 1000.0; // divided to get milliseconds with microsecond accuracy
+                   / 1000.0; // divided to get milliseconds with microsecond accuracy
     std::cout << "iteration time duration = " << elapsed_time << " [ms]" << std::endl;
     mean_time_temp += elapsed_time;
     max_time = std::max(elapsed_time, max_time);
