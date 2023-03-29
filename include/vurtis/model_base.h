@@ -9,7 +9,7 @@ class ModelBase {
 
 public:
 
-  ModelBase(double dt, int nx, int nu, int nh) : dt_(dt), nx_(nx), nu_(nu), nh_(nh) {}
+  ModelBase(double dt, int nx, int nu, int nh, int nh_e) : dt_(dt), nx_(nx), nu_(nu), nh_(nh), nh_e_(nh_e) {}
 
 
   // storing evaluation from sensitivity computed with forward AD
@@ -21,6 +21,7 @@ public:
   const int nx_;
   const int nu_;
   const int nh_;
+  const int nh_e_;
 
   //------------------------------------------------------------------------------------------------------------------
 
