@@ -9,8 +9,8 @@
 // Simple kinematic unicycle model with input constraints
 class Model : public vurtis::ModelBase {
  public:
-  explicit Model(const double dt, const int nx, const int nu, const int nh)
-      :ModelBase(dt, nx, nu, nh) {}
+    explicit Model(const double dt, const int nx, const int nu, const int nh, const int nh_e)
+        :ModelBase(dt, nx, nu, nh, nh_e) {}
 
  private:
 // Continuous-time dynamic model of the system for AD
@@ -121,7 +121,7 @@ int main() {
   u_ref = Eigen::Vector2d(0.0,0.0).replicate(N, 1);
   // ------------------------------------------------------------------------------------------------------------------
 
-  auto unicycle_model = std::make_shared<Model>(dT, nx, nu, nh);
+  auto unicycle_model = std::make_shared<Model>(dT, nx, nu, nh, nh_e);
   auto cost_function = std::make_shared<Cost>(x_ref, u_ref);
   vurtis::ProblemInit problem_init{nx, nu, nz, nh, nh_e, N, parameters, x_curr};
   vurtis::Solver solver(unicycle_model, cost_function, problem_init);
