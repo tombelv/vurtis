@@ -11,8 +11,8 @@
 class Model : public vurtis::ModelBase {
 public:
 
-    explicit Model(const double dt, const int nx, const int nu, const int nh, const Eigen::VectorXd & params)
-        :ModelBase(dt, nx, nu, nh), nominal_params_(params), np_(params.size()) {}
+    explicit Model(const double dt, const int nx, const int nu, const int nh, const int nh_e, const Eigen::VectorXd & params)
+        :ModelBase(dt, nx, nu, nh, nh_e), nominal_params_(params), np_(params.size()) {}
 
     const Eigen::VectorXd nominal_params_;
     const int np_;
@@ -143,9 +143,9 @@ public:
 
     }*/
 
-  vurtis::Vector GetModelParams() const {
-    return nominal_params_;
-  }
+    vurtis::Vector GetModelParams() const {
+      return nominal_params_;
+    }
 
 private:
     // Continuous-time dynamic model of the system for AD
