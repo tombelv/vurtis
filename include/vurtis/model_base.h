@@ -108,6 +108,10 @@ namespace vurtis {
           return autodiff::jacobian([&](VectorAD &state, VectorAD &input) {return step(state,input);},
                                     wrt(input), at(state, input), F_eval_);
         }
+        Matrix dFdp(VectorAD &state, VectorAD &input, VectorAD &params) {
+          return autodiff::jacobian([&](VectorAD &state, VectorAD &input, VectorAD &params) {return step(state,input, params); },
+                                    wrt(params), at(state, input, params));
+        }
 
         virtual MatrixAD dFdxu(VectorAD &state, VectorAD &input, VectorAD &params) {
           MatrixAD res(nx_, nx_+nu_);
