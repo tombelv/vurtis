@@ -424,8 +424,8 @@ namespace vurtis {
           QPsolver_.settings()->setWarmStart(true);
           QPsolver_.settings()->setPolish(true);
           QPsolver_.settings()->setMaxIteration(500);
-          QPsolver_.settings()->setAbsoluteTolerance(1e-8);
-          QPsolver_.settings()->setRelativeTolerance(1e-8);
+          QPsolver_.settings()->setAbsoluteTolerance(1e-6);
+          QPsolver_.settings()->setRelativeTolerance(1e-6);
 
           // Set the Initial data of the QP solver
           QPsolver_.data()->setNumberOfVariables(nx_ * (N_ + 1) + nu_ * N_);
@@ -453,7 +453,6 @@ namespace vurtis {
 
         Vector SolveRTI(Vector &xcurrent) {
 
-
           ComputeSensitivitiesAndResiduals();
           ComputeCost();
 
@@ -472,13 +471,16 @@ namespace vurtis {
 
           UpdateSolutionGuess();
 
+          ShiftInitialization();
+
           return ctrl;
 
         }
 
         // An example division of preparation and feedback phase.
         void Preparation() {
-          UpdateSolutionGuess();
+
+          ShiftInitialization();
 
           ComputeSensitivitiesAndResiduals();
           ComputeCost();
@@ -500,9 +502,48 @@ namespace vurtis {
 
           Vector ctrl = u_guess_.head(nu_) + QPsolver_.getSolution().segment(nx_ * (N_ + 1), nu_);
 
+          UpdateSolutionGuess();
+
           return ctrl;
         };
 
+        Vector SolveSQP(Vector &xcurrent, const int N) {
+
+          Vector ctrl;
+
+          for(int i = 0; i<N; ++i) {
+
+            ComputeSensitivitiesAndResiduals();
+            ComputeCost();
+
+            UpdateConstraintMatrix();
+            UpdateHessian();
+            ComputeGradient();
+            SetXcurrent(xcurrent);
+            UpdateBounds();
+
+            UpdateQPsolver();
+            QPsolver_.solveProblem();
+
+            dw_ = QPsolver_.getSolution();
+
+            ctrl = u_guess_.head(nu_) + QPsolver_.getSolution().segment(nx_ * (N_ + 1), nu_);
+
+            UpdateSolutionGuess();
+          }
+
+
+          ShiftInitialization();
+
+          ComputeSensitivitiesAndResiduals();
+          ComputeCost();
+
+          UpdateConstraintMatrix();
+          UpdateHessian();
+          ComputeGradient();
+
+          return ctrl;
+        }
 
 
         const Vector GetMultipliers() {
