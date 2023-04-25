@@ -9,6 +9,7 @@
 .clang-format
 .idea/
 *.csv
+*.pdf
 
 !/examples/unicycle_tracking/data/trajectory_curve_20Hz.csv
 /examples/unicycle_tracking/cmake-build-release/
