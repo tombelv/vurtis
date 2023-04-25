@@ -3,6 +3,7 @@
 #include "OsqpEigen/OsqpEigen.h"
 #include "vurtis/cost_base.h"
 #include "vurtis/model_base.h"
+#include "vurtis/setup.h"
 #include "utils.h"
 #include "csvparser.h"
 
@@ -59,10 +60,9 @@ namespace vurtis {
         const std::shared_ptr<ModelBase> model_;
         const std::shared_ptr<CostBase> cost_;
 
-        Solver(const std::shared_ptr<ModelBase> model, const std::shared_ptr<CostBase> cost, const ProblemInit &problemParams) : model_{model}, cost_{cost} {
+        Solver(const std::shared_ptr<ModelBase> model, const std::shared_ptr<CostBase> cost, const ProblemSetup &problemParams) : model_{model}, cost_{cost} {
 
           x_current_ = problemParams.x0;
-
 
           nx_ = problemParams.nx;
           nu_ = problemParams.nu;
@@ -72,7 +72,7 @@ namespace vurtis {
 
           N_ = problemParams.N;
 
-          parameters_ = problemParams.parameters;
+          parameters_ = problemParams.nlp_parameters;
 
           InitMatricesToZero();
 
