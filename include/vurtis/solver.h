@@ -161,7 +161,6 @@ namespace vurtis {
 
           }
 
-          // !! For now the end cost is set to zero !!
           // Add the end cost_ block (dim: nx_)
           { int i = nx_ * N_;
 
@@ -423,9 +422,10 @@ namespace vurtis {
           QPsolver_.settings()->setVerbosity(false);
           QPsolver_.settings()->setWarmStart(true);
           QPsolver_.settings()->setPolish(true);
-          QPsolver_.settings()->setMaxIteration(500);
-          QPsolver_.settings()->setAbsoluteTolerance(1e-6);
-          QPsolver_.settings()->setRelativeTolerance(1e-6);
+          QPsolver_.settings()->setMaxIteration(5000);
+          QPsolver_.settings()->setAbsoluteTolerance(1e-4);
+          QPsolver_.settings()->setRelativeTolerance(1e-3);
+          //QPsolver_.settings()->setLinearSystemSolver(1);
 
           // Set the Initial data of the QP solver
           QPsolver_.data()->setNumberOfVariables(nx_ * (N_ + 1) + nu_ * N_);
@@ -532,8 +532,6 @@ namespace vurtis {
             UpdateSolutionGuess();
           }
 
-
-          ShiftInitialization();
 
           ComputeSensitivitiesAndResiduals();
           ComputeCost();

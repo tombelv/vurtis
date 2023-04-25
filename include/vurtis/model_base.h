@@ -86,7 +86,7 @@ namespace vurtis {
         }
 
         // Integrator interface for plain Eigen vectors
-        Vector integrator(const Vector &state_,const Vector &input_) {
+        virtual Vector integrator(const Vector &state_,const Vector &input_) {
           VectorAD state = state_;
           VectorAD input = input_;
 
