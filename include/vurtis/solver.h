@@ -21,7 +21,6 @@ namespace vurtis {
         int nh_;
         int nh_e_;
 
-        int num_parameters_;
         int N_;
 
         Matrix Ad_list_;
@@ -60,7 +59,7 @@ namespace vurtis {
         const std::shared_ptr<ModelBase> model_;
         const std::shared_ptr<CostBase> cost_;
 
-        Solver(const std::shared_ptr<ModelBase> model, const std::shared_ptr<CostBase> cost, const ProblemSetup &problemParams) : model_{model}, cost_{cost} {
+        Solver(const std::shared_ptr<ModelBase> & model, const std::shared_ptr<CostBase> & cost, const ProblemSetup &problemParams) : model_{model}, cost_{cost} {
 
           x_current_ = problemParams.x0;
 
