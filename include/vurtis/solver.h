@@ -52,6 +52,8 @@ namespace vurtis {
         Vector lower_bound_;
         Vector upper_bound_;
 
+    protected:
+
         OsqpEigen::Solver QPsolver_;
 
     public:
@@ -542,6 +544,7 @@ namespace vurtis {
           return ctrl;
         }
 
+        int GetSolverStatus() const { return (int)QPsolver_.getStatus();}
 
         const Vector GetMultipliers() {
           return QPsolver_.getDualSolution();
