@@ -16,25 +16,28 @@ class CostBase {
   VectorAD cost_eval_;
   VectorAD cost_eval_term_;
 
-  virtual VectorAD LeastSquareCost(VectorAD &state, VectorAD &input, const Vector &state_ref, const Vector &input_ref) = 0;
-  virtual VectorAD LeastSquareCostTerminal(VectorAD &state, const Vector &state_ref) = 0;
+  virtual VectorAD LeastSquareCost(VectorAD &state, VectorAD &input, const Vector &state_ref, const Vector &input_ref, const Vector & nlp_params) = 0;
+  virtual VectorAD LeastSquareCostTerminal(VectorAD &state, const Vector &state_ref, const Vector & nlp_params) = 0;
 
 
-    Matrix GradientCost(VectorAD &state, VectorAD &input, Vector &state_ref, Vector &input_ref) {
+    Matrix GradientCost(VectorAD &state, VectorAD &input, Vector &state_ref, Vector &input_ref, const Vector & nlp_params) {
     return autodiff::jacobian([&](VectorAD &state,
                                            VectorAD &input,
                                            Vector &state_ref,
-                                           Vector &input_ref) { return LeastSquareCost(state, input, state_ref, input_ref); },
+                                           Vector &input_ref,
+                                           const Vector & nlp_params) {
+                                        return LeastSquareCost(state, input, state_ref, input_ref, nlp_params); },
                                        wrt(state, input),
-                                       at(state, input, state_ref, input_ref),
+                                       at(state, input, state_ref, input_ref, nlp_params),
                                        cost_eval_);
   }
 
-    Matrix GradientCostTerminal(VectorAD &state, Vector &state_ref) {
+    Matrix GradientCostTerminal(VectorAD &state, Vector &state_ref, const Vector & nlp_params) {
       return autodiff::jacobian([&](VectorAD &state,
-                                    Vector &state_ref) { return LeastSquareCostTerminal(state, state_ref); },
+                                    Vector &state_ref,
+                                    const Vector & nlp_params) { return LeastSquareCostTerminal(state, state_ref, nlp_params); },
                                 wrt(state),
-                                at(state, state_ref),
+                                at(state, state_ref, nlp_params),
                                 cost_eval_term_);
     }
 

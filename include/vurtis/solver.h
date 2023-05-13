@@ -339,8 +339,9 @@ namespace vurtis {
             VectorAD input = u_guess_.segment(idx * nu_, nu_);
             Vector state_ref = cost_->x_ref_.segment(idx * nx_, nx_);
             Vector input_ref = cost_->u_ref_.segment(idx * nu_, nu_);
+            Vector params = parameters_.col(idx);
 
-            Matrix dR = cost_->GradientCost(state,input,state_ref,input_ref);
+            Matrix dR = cost_->GradientCost(state,input,state_ref,input_ref, params);
             dRdx_list.middleCols(idx * nx_, nx_) = dR.leftCols(nx_);
             dRdu_list.middleCols(idx * nu_, nu_) = dR.rightCols(nu_);
 
@@ -349,8 +350,9 @@ namespace vurtis {
 
           VectorAD state = x_guess_.segment(N_ * nx_, nx_);
           Vector state_ref = cost_->x_ref_.segment(N_ * nx_, nx_);
+          Vector params = parameters_.col(N_);
 
-          Matrix dR =  cost_->GradientCostTerminal(state,state_ref);
+          Matrix dR =  cost_->GradientCostTerminal(state,state_ref, params);
           dRdx_list.block(0, N_ * nx_, dR.rows(), nx_) = dR;
           R_list_.block(0, N_, dR.rows(), 1) = cost_->cost_eval_term_.cast<double>();
 
