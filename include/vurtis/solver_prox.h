@@ -1,27 +1,23 @@
+
 #pragma once
 
-#include "OsqpEigen/OsqpEigen.h"
+#include <proxsuite/proxqp/sparse/sparse.hpp>
+
 #include "vurtis/cost_base.h"
 #include "vurtis/model_base.h"
 #include "vurtis/setup.h"
 #include "utils.h"
 #include "csvparser.h"
+#include "parameters_base.h"
+
 
 
 namespace vurtis {
 
+    template<class Model, class Cost, typename Setup>
     class Solver {
-        friend OsqpEigen::Solver;
 
     private:
-
-        int nx_;
-        int nu_;
-        int nz_;
-        int nh_;
-        int nh_e_;
-
-        int N_;
 
         Matrix Ad_list_;
         Matrix Bd_list_;
@@ -34,8 +30,6 @@ namespace vurtis {
         Vector u_guess_;
 
         Vector dw_;
-
-//        Matrix parameters_;
 
         Vector x_current_;
 
@@ -54,26 +48,35 @@ namespace vurtis {
 
     protected:
 
-        OsqpEigen::Solver QPsolver_;
+        static constexpr int nx_ = Setup::nx;
+        static constexpr int nu_ = Setup::nu;
+        static constexpr int nz_ = Setup::nz;
+        static constexpr int nz_e_ = Setup::nz_e;
+        static constexpr int nh_ = Setup::nh;
+        static constexpr int nh_e_ = Setup::nh_e;
+
+        static constexpr int N_ = Setup::N;
+
+        CostBase<Cost>& cost_;
+        ModelBase<Model>& model_;
+
+        proxsuite::proxqp::sparse::QP<double, proxsuite::proxqp::isize> QP_;
 
     public:
 
-        const std::shared_ptr<ModelBase> model_;
-        const std::shared_ptr<CostBase> cost_;
 
-        Solver(const std::shared_ptr<ModelBase> & model, const std::shared_ptr<CostBase> & cost, const ProblemSetup &problemParams) : model_{model}, cost_{cost} {
 
-          x_current_ = problemParams.x0;
+        Solver(ModelBase<Model> & model, CostBase<Cost> & cost,
+               const Vector &init_state) :
+            QP_(SetupBase<Setup>::nx * (N_ + 1) + nu_ * N_,
+                nx_ * (N_ + 1),
+                nh_ * N_ + nh_e_),
+            model_{model},
+            cost_{cost} {
 
-          nx_ = problemParams.nx;
-          nu_ = problemParams.nu;
-          nz_ = problemParams.nz;
-          nh_ = problemParams.nh;
-          nh_e_ = problemParams.nh_e;
+          x_current_ = init_state;
 
-          N_ = problemParams.N;
 
-//          parameters_ = problemParams.nlp_parameters;
 
           InitMatricesToZero();
 
@@ -122,12 +125,12 @@ namespace vurtis {
 
           std::vector<Eigen::Triplet<double>> tripletList;
 
-          ComputeCost();
+          InitCost();
 
           tripletList.reserve(nx_*nx_ * (N_ + 1) + nu_*nu_ * N_ + 2*nx_*nu_*N_);
 
 
-          for (int i = 0; i <  N_; ++i) {
+          for (int i = 0; i <  SetupBase<Setup>::N; ++i) {
             int idx_x = i*nx_;
             int idx_u = i*nu_;
             Matrix H_dxdx = (dRdx_list.middleCols(idx_x,nx_)).transpose()*dRdx_list.middleCols(idx_x,nx_);
@@ -164,8 +167,6 @@ namespace vurtis {
 
           // Add the end cost_ block (dim: nx_)
           { int i = nx_ * N_;
-
-            int idx_x = i*nx_;
             Matrix H_dxdx = (dRdx_list.middleCols(i,nx_)).transpose()*dRdx_list.middleCols(i,nx_);
 
             for (int row_idx = 0; row_idx < nx_; ++row_idx) {
@@ -245,16 +246,16 @@ namespace vurtis {
         }
 
         void InitSolutionGuess() {
-          //x_guess_ = cost_->x_ref_;
+          //x_guess_ = cost_.x_ref_;
           x_guess_ = x_current_.replicate(N_+1,1);
-          u_guess_ = cost_->u_ref_;
+          u_guess_ = cost_.u_ref_;
         }
 
         void UpdateHessian() {
 
           Vector nonzero(nx_*nx_*(N_+1) + nu_*nu_*N_ + 2*nx_*nu_*N_);
 
-          for (int i = 0; i <  N_; ++i) {
+          for (int i = 0; i <  SetupBase<Setup>::N; ++i) {
             int idx_x = i*nx_;
             int idx_u = i*nu_;
             Matrix H_dxdx = (dRdx_list.middleCols(idx_x,nx_)).transpose()*dRdx_list.middleCols(idx_x,nx_);
@@ -266,19 +267,18 @@ namespace vurtis {
           }
 
           // For now the terminal cost is zero
-          { int i = N_;
+          { int i = SetupBase<Setup>::N;
             Matrix H_dxdx = (dRdx_list.middleCols(i*nx_,nx_)).transpose()*dRdx_list.middleCols(i*nx_,nx_);
             for (int ii = 0; ii < nx_; ++ii)
               nonzero.segment((nx_+nu_)*i*nx_ + nx_*ii, nx_) = H_dxdx.col(ii);
           }
 
 
+          const int input_start_coeff = SetupBase<Setup>::nx*SetupBase<Setup>::nx*(SetupBase<Setup>::N+1) + SetupBase<Setup>::nx*SetupBase<Setup>::nu*SetupBase<Setup>::N;
 
-          const int input_start_coeff = nx_*nx_*(N_+1) + nx_*nu_*N_;
-
-          for (int i = 0; i <  N_; ++i) {
-            int idx_x = i*nx_;
-            int idx_u = i*nu_;
+          for (int i = 0; i <  SetupBase<Setup>::N; ++i) {
+            int idx_x = i*SetupBase<Setup>::nx;
+            int idx_u = i*SetupBase<Setup>::nu;
             Matrix H_dudu = (dRdu_list.middleCols(idx_u,nu_)).transpose()*dRdu_list.middleCols(idx_u,nu_);
             Matrix H_dxdu = (dRdx_list.middleCols(idx_x,nx_)).transpose()*dRdu_list.middleCols(idx_u,nu_);
             for (int ii = 0; ii < nu_; ++ii) {
@@ -333,29 +333,70 @@ namespace vurtis {
 
         }
 
+        void InitCost() {
+          for (int idx = 0; idx < N_; ++idx) {
+
+              VectorAD state = x_guess_.segment(idx * nx_, nx_);
+              VectorAD input = u_guess_.segment(idx * nu_, nu_);
+              Vector state_ref = cost_.x_ref_.segment(idx * nx_, nx_);
+              Vector input_ref = cost_.u_ref_.segment(idx * nu_, nu_);
+
+              Matrix dR = cost_.GradientCost(state, input, state_ref, input_ref, idx);
+              dRdx_list.middleCols(idx * nx_, nx_) = dR.leftCols(nx_);
+              dRdu_list.middleCols(idx * nu_, nu_) = dR.rightCols(nu_);
+
+              R_list_.col(idx) = cost_.cost_eval_.template cast<double>();
+
+          }
+
+          if constexpr(nz_e_ > 0) {
+              VectorAD state = x_guess_.segment(N_ * nx_, nx_);
+              Vector state_ref = cost_.x_ref_.segment(N_ * nx_, nx_);
+//          Vector params = parameters_.col(N_);
+
+              Matrix dR =  cost_.GradientCostTerminal(state,state_ref, N_);
+              dRdx_list.block(0, N_ * nx_, dR.rows(), nx_) = dR;
+              R_list_.block(0, N_, nz_e_, 1) = cost_.cost_eval_term_.template cast<double>();
+
+          }
+
+
+        }
+
         void ComputeCost() {
           for (int idx = 0; idx < N_; ++idx) {
             VectorAD state = x_guess_.segment(idx * nx_, nx_);
             VectorAD input = u_guess_.segment(idx * nu_, nu_);
-            Vector state_ref = cost_->x_ref_.segment(idx * nx_, nx_);
-            Vector input_ref = cost_->u_ref_.segment(idx * nu_, nu_);
-//            Vector params = parameters_.col(idx);
+            Vector state_ref = cost_.x_ref_.segment(idx * nx_, nx_);
+            Vector input_ref = cost_.u_ref_.segment(idx * nu_, nu_);
 
-            Matrix dR = cost_->GradientCost(state,input,state_ref,input_ref, idx);
-            dRdx_list.middleCols(idx * nx_, nx_) = dR.leftCols(nx_);
-            dRdu_list.middleCols(idx * nu_, nu_) = dR.rightCols(nu_);
+            if constexpr (Cost::cost_type == NONLINEAR_LS) {
+              Matrix dR = cost_.GradientCost(state, input, state_ref, input_ref, idx);
+              dRdx_list.middleCols(idx * nx_, nx_) = dR.leftCols(nx_);
+              dRdu_list.middleCols(idx * nu_, nu_) = dR.rightCols(nu_);
 
-            R_list_.col(idx) = cost_->cost_eval_.cast<double>();
+              R_list_.col(idx) = cost_.cost_eval_.template cast<double>();
+            }
+            if constexpr (Cost::cost_type == LINEAR_LS) {
+              R_list_.col(idx) = cost_.EvalCost(state, input, state_ref, input_ref, idx).template cast<double>();
+            }
           }
 
           VectorAD state = x_guess_.segment(N_ * nx_, nx_);
-          Vector state_ref = cost_->x_ref_.segment(N_ * nx_, nx_);
+          Vector state_ref = cost_.x_ref_.segment(N_ * nx_, nx_);
 //          Vector params = parameters_.col(N_);
 
-          Matrix dR =  cost_->GradientCostTerminal(state,state_ref, N_);
-          dRdx_list.block(0, N_ * nx_, dR.rows(), nx_) = dR;
-          R_list_.block(0, N_, dR.rows(), 1) = cost_->cost_eval_term_.cast<double>();
-
+            if constexpr(nz_e_ > 0) {
+                if constexpr (Cost::cost_type == NONLINEAR_LS) {
+                    Matrix dR = cost_.GradientCostTerminal(state, state_ref, N_);
+                    dRdx_list.block(0, N_ * nx_, dR.rows(), nx_) = dR;
+                    R_list_.block(0, N_, dR.rows(), 1) = cost_.cost_eval_term_.template cast<double>();
+                }
+                if constexpr (Cost::cost_type == LINEAR_LS) {
+                    R_list_.block(0, N_, nz_e_, 1) = cost_.EvalCostTerminal(state, state_ref,
+                                                                            N_).template cast<double>();
+                }
+            }
 
         }
 
@@ -366,32 +407,32 @@ namespace vurtis {
             VectorAD input = u_guess_.segment(idx * nu_, nu_);
 //            Vector params = parameters_.col(idx);
 
-            Ad_list_.middleCols(idx * nx_, nx_) = model_->Ad(state, input);
-            Bd_list_.middleCols(idx * nu_, nu_) = model_->Bd(state, input);
+            Ad_list_.middleCols(idx * nx_, nx_) = model_.Ad(state, input);
+            Bd_list_.middleCols(idx * nu_, nu_) = model_.Bd(state, input);
 
-            residual_x_.segment(idx * nx_, nx_) = (model_->F_eval_ - state_next).cast<double>();
+            residual_x_.segment(idx * nx_, nx_) = (model_.F_eval_ - state_next).template cast<double>();
 
-            if (nh_ > 0) {
-              Cd_list_.middleCols(idx * nx_, nx_) = model_->Cd(state, input, idx);
-              Dd_list_.middleCols(idx * nu_, nu_) = model_->Dd(state, input, idx);
+            if constexpr (nh_ > 0) {
+              Cd_list_.middleCols(idx * nx_, nx_) = model_.Cd(state, input, idx);
+              Dd_list_.middleCols(idx * nu_, nu_) = model_.Dd(state, input, idx);
 
-              residual_h_.segment(idx * nh_, nh_) = (model_->h_eval_).cast<double>();
+              residual_h_.segment(idx * nh_, nh_) = (model_.h_eval_).template cast<double>();
             }
 
           }
 
-          if (nh_e_ > 0) {
+          if constexpr (nh_e_ > 0) {
             VectorAD state = x_guess_.segment(N_ * nx_, nx_);
 //            Vector params = parameters_.col(N_);
 
-            Cd_e = model_->Cd_e(state, N_);
-            residual_h_.segment(N_ * nh_, nh_e_) = model_->he_eval_.cast<double>();
+            Cd_e = model_.Cd_e(state, N_);
+            residual_h_.segment(N_ * nh_, nh_e_) = model_.he_eval_.template cast<double>();
           }
         }
 
         void UpdateBounds() {
-          lower_bound_ << (x_current_ - x_guess_.head(nx_)), residual_x_, -1e15*Vector::Ones(nh_ * N_ + nh_e_);
-          upper_bound_ << (x_current_ - x_guess_.head(nx_)), residual_x_, -residual_h_;
+          lower_bound_ << (x_current_ - x_guess_.head<nx_>()), residual_x_, -1e15*Vector::Ones(nh_ * N_ + nh_e_);
+          upper_bound_ << (x_current_ - x_guess_.head<nx_>()), residual_x_, -residual_h_;
         }
 
 //        void SetParametersAtStage(int stage, const Vector &parameters) {
@@ -413,43 +454,45 @@ namespace vurtis {
           x_guess_.head(nx_ * N_) = x_guess_.tail(nx_ * N_);
           u_guess_.head(nu_ * (N_ - 1)) = u_guess_.tail(nu_ * (N_ - 1));
 
-          Vector last_x = x_guess_.tail(nx_);
-          Vector last_u = u_guess_.tail(nu_);
-          Vector next_guess = model_->integrator(last_x, last_u);
+          VectorAD last_x = x_guess_.tail(nx_);
+          VectorAD last_u = u_guess_.tail(nu_);
+          Vector next_guess = model_.step(last_x, last_u).template cast<double>();
 
           x_guess_.tail(nx_) = next_guess;
         }
 
         bool SetupQPsolver() {
           // Settings
-          QPsolver_.settings()->setVerbosity(true);
-          QPsolver_.settings()->setWarmStart(true);
-          QPsolver_.settings()->setPolish(true);
-          QPsolver_.settings()->setMaxIteration(5000);
-          QPsolver_.settings()->setAbsoluteTolerance(1e-4);
-          QPsolver_.settings()->setRelativeTolerance(1e-4);
-          //QPsolver_.settings()->setLinearSystemSolver(1);
 
-          // Set the Initial data of the QP solver
-          QPsolver_.data()->setNumberOfVariables(nx_ * (N_ + 1) + nu_ * N_);
-          QPsolver_.data()->setNumberOfConstraints(nx_ * (N_ + 1) + nh_ * N_ + nh_e_);
-          QPsolver_.data()->setHessianMatrix(hessian_matrix_);
-          QPsolver_.data()->setGradient(gradient_);
-          QPsolver_.data()->setLinearConstraintsMatrix(constraint_matrix_);
-          QPsolver_.data()->setLowerBound(lower_bound_);
-          QPsolver_.data()->setUpperBound(upper_bound_);
+          QP_.settings.max_iter = 500;
+          QP_.settings.eps_abs = 1e-5;
 
+        SparseMatrixEigen A = constraint_matrix_.topRows(nx_*(N_+1));
+        SparseMatrixEigen C = constraint_matrix_.bottomRows(nh_*N_+nh_e_);
           // instantiate the solver
-          if (!QPsolver_.initSolver()) return true;
+            QP_.init(hessian_matrix_,
+                     gradient_,
+                     A,
+                     lower_bound_.head(nx_*(N_+1)),
+                     C,
+                     lower_bound_.tail(nh_*N_+nh_e_),
+                     upper_bound_.tail(nh_*N_+nh_e_));
 
-          return false;
+          return true;
         }
 
         void UpdateQPsolver() {
-          QPsolver_.updateHessianMatrix(hessian_matrix_);
-          QPsolver_.updateGradient(gradient_);
-          QPsolver_.updateLinearConstraintsMatrix(constraint_matrix_);
-          QPsolver_.updateBounds(lower_bound_, upper_bound_);
+
+          SparseMatrixEigen A = constraint_matrix_.topRows(nx_*(N_+1));
+          SparseMatrixEigen C = constraint_matrix_.bottomRows(nh_*N_+nh_e_);
+
+          QP_.update(hessian_matrix_,
+                   gradient_,
+                   A,
+                   lower_bound_.head(nx_*(N_+1)),
+                   C,
+                   lower_bound_.tail(nh_*N_+nh_e_),
+                   upper_bound_.tail(nh_*N_+nh_e_));
         }
 
 
@@ -466,11 +509,11 @@ namespace vurtis {
           UpdateBounds();
 
           UpdateQPsolver();
-          QPsolver_.solveProblem();
+          QP_.solve();
 
-          dw_ = QPsolver_.getSolution();
+          dw_ = QP_.results.x;
 
-          Vector ctrl = u_guess_.head(nu_) + QPsolver_.getSolution().segment(nx_ * (N_ + 1), nu_);
+          Vector ctrl = u_guess_.head(nu_) + dw_.segment(nx_ * (N_ + 1), nu_);
 
           UpdateSolutionGuess();
 
@@ -489,7 +532,9 @@ namespace vurtis {
           ComputeCost();
 
           UpdateConstraintMatrix();
-          UpdateHessian();
+          if constexpr (Cost::cost_type == NONLINEAR_LS or Cost::term_cost_type == NONLINEAR_LS)
+            UpdateHessian();
+
           ComputeGradient();
         };
 
@@ -499,7 +544,8 @@ namespace vurtis {
           ComputeCost();
 
           UpdateConstraintMatrix();
-          UpdateHessian();
+          if constexpr (Cost::cost_type == NONLINEAR_LS or Cost::term_cost_type == NONLINEAR_LS)
+            UpdateHessian();
           ComputeGradient();
         };
 
@@ -509,11 +555,11 @@ namespace vurtis {
           UpdateBounds();
 
           UpdateQPsolver();
-          QPsolver_.solveProblem();
+          QP_.solve();
 
-          dw_ = QPsolver_.getSolution();
+          dw_ = QP_.results.x;
 
-          Vector ctrl = u_guess_.head(nu_) + QPsolver_.getSolution().segment(nx_ * (N_ + 1), nu_);
+          Vector ctrl = u_guess_.head(nu_) + dw_.segment(nx_ * (N_ + 1), nu_);
 
           UpdateSolutionGuess();
 
@@ -536,11 +582,11 @@ namespace vurtis {
             UpdateBounds();
 
             UpdateQPsolver();
-            QPsolver_.solveProblem();
+            QP_.solve();
 
-            dw_ = QPsolver_.getSolution();
+            dw_ = QP_.results.x;
 
-            ctrl = u_guess_.head(nu_) + QPsolver_.getSolution().segment(nx_ * (N_ + 1), nu_);
+            Vector ctrl = u_guess_.head(nu_) + dw_.segment(nx_ * (N_ + 1), nu_);
 
             UpdateSolutionGuess();
           }
@@ -556,10 +602,26 @@ namespace vurtis {
           return ctrl;
         }
 
-        int GetSolverStatus() const { return (int)QPsolver_.getStatus();}
+        int GetSolverStatus() const {
+          if(QP_.results.info.status == proxsuite::proxqp::QPSolverOutput::PROXQP_SOLVED) {
+            std::cout << "Problem solved" << std::endl;
+            return 0;
+          }
+          else {
+            if(QP_.results.info.status == proxsuite::proxqp::QPSolverOutput::PROXQP_MAX_ITER_REACHED)
+              std::cout << "Maximum number of iterations reached" << std::endl;
+            else if(QP_.results.info.status == proxsuite::proxqp::QPSolverOutput::PROXQP_PRIMAL_INFEASIBLE)
+              std::cout << "Primal infeasibility" << std::endl;
+            else
+              std::cout << "Primal infeasibility" << std::endl;
+            return 1;
+            }
+          }
 
         const Vector GetMultipliers() {
-          return QPsolver_.getDualSolution();
+          Vector multipliers(QP_.results.y.size() + QP_.results.z.size());
+          multipliers << QP_.results.y, QP_.results.z;
+          return multipliers;
         }
 
 
@@ -576,7 +638,6 @@ namespace vurtis {
         Vector GetSolutionDelta() {return dw_;}
         Vector GetCurrentState() {return x_current_;}
 
-//        Matrix GetNlpParams() {return parameters_;}
 
         SparseMatrixEigen GetHessianMatrix() {return hessian_matrix_;}
         SparseMatrixEigen GetConstraintMatrix() {return constraint_matrix_;}

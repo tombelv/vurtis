@@ -1,64 +1,67 @@
 #pragma once
-// eigen
+
 #include "utils.h"
+#include "parameters_base.h"
 
 namespace vurtis {
 
-class CostBase {
+    enum CostType {LINEAR_LS, NONLINEAR_LS};
 
- public:
+    template <typename Cost>
+    class CostBase {
 
-  CostBase(const Vector& x_ref, const Vector& u_ref) : x_ref_(x_ref), u_ref_(u_ref) {}
+    public:
 
-  Vector x_ref_; // state reference
-  Vector u_ref_; // input reference
+        CostBase(const Vector& x_ref, const Vector& u_ref) : x_ref_(x_ref), u_ref_(u_ref) {}
 
-  VectorAD cost_eval_;
-  VectorAD cost_eval_term_;
+        Vector x_ref_;
+        Vector u_ref_;
 
-  virtual VectorAD LeastSquareCost(VectorAD &state, VectorAD &input, const Vector &state_ref, const Vector &input_ref, const Vector & nlp_params) = 0;
-  virtual VectorAD LeastSquareCostTerminal(VectorAD &state, const Vector &state_ref, const Vector & nlp_params) = 0;
+        VectorAD cost_eval_;
+        VectorAD cost_eval_term_;
 
+        const CostType cost_type = Cost::cost_type;
+        const CostType term_cost_type = Cost::term_cost_type;
 
-    Matrix GradientCost(VectorAD &state, VectorAD &input, Vector &state_ref, Vector &input_ref, const Vector & nlp_params) {
-    return autodiff::jacobian([&](VectorAD &state,
-                                           VectorAD &input,
-                                           Vector &state_ref,
-                                           Vector &input_ref,
-                                           const Vector & nlp_params) {
-                                        return LeastSquareCost(state, input, state_ref, input_ref, nlp_params); },
-                                       wrt(state, input),
-                                       at(state, input, state_ref, input_ref, nlp_params),
-                                       cost_eval_);
-  }
+        VectorAD LeastSquareCostInterface(VectorAD &state, VectorAD &input, const Vector &state_ref, const Vector &input_ref, int t_idx) {
+          return static_cast<Cost*>(this)->LeastSquareCost(state, input, state_ref, input_ref, t_idx);
+        }
+        VectorAD LeastSquareCostTerminalInterface(VectorAD &state, const Vector &state_ref, int t_idx) {
+          return static_cast<Cost*>(this)->LeastSquareCostTerminal(state, state_ref, t_idx);
+        }
 
-    Matrix GradientCostTerminal(VectorAD &state, Vector &state_ref, const Vector & nlp_params) {
-      return autodiff::jacobian([&](VectorAD &state,
-                                    Vector &state_ref,
-                                    const Vector & nlp_params) { return LeastSquareCostTerminal(state, state_ref, nlp_params); },
-                                wrt(state),
-                                at(state, state_ref, nlp_params),
-                                cost_eval_term_);
-    }
-
- // void SetXref(const Vector &x_ref) { x_ref_ = x_ref; }
- // void SetUref(const Vector &u_ref) { u_ref_ = u_ref; }
-
-};
-
-struct ProblemInit {
-
-  const int nx; // number of states of dynamic model
-  const int nu; // number of inputs
-  const int nz; // dimension of the least square cost function
-  const int nh; // number of constraints (step=0,...,N-1)
-  const int nh_e; // number of end-constraints (step=N)
-  const int N; // number of steps
-
-  Matrix parameters; // initialization of parameters
-  Vector x0; // initial state
+        VectorAD EvalCost(VectorAD &state, VectorAD &input, const Vector &state_ref, const Vector &input_ref, int t_idx) {
+          return static_cast<Cost*>(this)->LeastSquareCost(state, input, state_ref, input_ref, t_idx);
+        }
+        VectorAD EvalCostTerminal(VectorAD &state, const Vector &state_ref, int t_idx) {
+          return static_cast<Cost*>(this)->LeastSquareCostTerminal(state, state_ref, t_idx);
+        }
 
 
-};
+        Matrix GradientCost(VectorAD &state, VectorAD &input, Vector &state_ref, Vector &input_ref,const int t_idx) {
+          return autodiff::jacobian([&](VectorAD &state,
+                                        VectorAD &input,
+                                        Vector &state_ref,
+                                        Vector &input_ref,
+                                        const int t_idx) {
+                                        return LeastSquareCostInterface(state, input, state_ref, input_ref, t_idx); },
+                                    wrt(state, input),
+                                    at(state, input, state_ref, input_ref, t_idx),
+                                    cost_eval_);
+        }
+
+        Matrix GradientCostTerminal(VectorAD &state, Vector &state_ref,const int t_idx) {
+          return autodiff::jacobian([&](VectorAD &state,
+                                        Vector &state_ref,
+                                        const int t_idx) { return LeastSquareCostTerminalInterface(state, state_ref, t_idx); },
+                                    wrt(state),
+                                    at(state, state_ref, t_idx),
+                                    cost_eval_term_);
+        }
+
+
+    };
+
+
 
 }

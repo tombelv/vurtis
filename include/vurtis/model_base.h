@@ -4,13 +4,13 @@
 
 namespace vurtis {
 
+    template<class Model>
     class ModelBase {
 
 
     public:
 
         ModelBase(double dt, int nx, int nu, int nh, int nh_e) : dt_(dt), nx_(nx), nu_(nu), nh_(nh), nh_e_(nh_e) {}
-
 
         // storing evaluation from sensitivity computed with forward AD
         VectorAD F_eval_;
@@ -26,15 +26,21 @@ namespace vurtis {
         //------------------------------------------------------------------------------------------------------------------
 
         // continuous-time Dynamics to be implemented
-        virtual VectorAD Dynamics(VectorAD &state, VectorAD &input) = 0;
-
-        virtual VectorAD Dynamics(VectorAD &state, VectorAD &input, VectorAD &params) {
-          return Dynamics(state, input);
+        VectorAD DynamicsInterface(VectorAD &state, VectorAD &input) {
+          return static_cast<Model*>(this)->Dynamics(state, input);
         }
+
+        VectorAD DynamicsInterface(VectorAD &state, VectorAD &input, VectorAD &params) {
+          return static_cast<Model*>(this)->Dynamics(state, input, params);
+        }
+
+        VectorAD Dynamics(VectorAD &state, VectorAD &input, VectorAD &params) {
+          return static_cast<Model*>(this)->Dynamics(state, input);
+        }
+
 
         // discretization with Runge-Kutta 4th order
         // ns steps over the sampling time interval dt_
-
         VectorAD step(VectorAD &state, VectorAD &input) {
 
           VectorAD state_next = state;
@@ -43,16 +49,16 @@ namespace vurtis {
           double h = dt_ / ns;
 
           for (int i = 0; i < ns; ++i) {
-            VectorAD k1 = Dynamics(state, input);
+            VectorAD k1 = DynamicsInterface(state, input);
 
             VectorAD temp1 = state + 0.5 * k1 * h;
-            VectorAD k2 = Dynamics(temp1, input);
+            VectorAD k2 = DynamicsInterface(temp1, input);
 
             VectorAD temp2 = state + 0.5 * k2 * h;
-            VectorAD k3 = Dynamics(temp2, input);
+            VectorAD k3 = DynamicsInterface(temp2, input);
 
             VectorAD temp3 = state + k3 * h;
-            VectorAD k4 = Dynamics(temp3, input);
+            VectorAD k4 = DynamicsInterface(temp3, input);
 
             state_next += (h / 6) * (k1 + 2 * k2 + 2 * k3 + k4);
           }
@@ -68,16 +74,16 @@ namespace vurtis {
           double h = dt_ / ns;
 
           for (int i = 0; i < ns; ++i) {
-            VectorAD k1 = Dynamics(state, input, params);
+            VectorAD k1 = DynamicsInterface(state, input, params);
 
             VectorAD temp1 = state + 0.5 * k1 * h;
-            VectorAD k2 = Dynamics(temp1, input, params);
+            VectorAD k2 = DynamicsInterface(temp1, input, params);
 
             VectorAD temp2 = state + 0.5 * k2 * h;
-            VectorAD k3 = Dynamics(temp2, input, params);
+            VectorAD k3 = DynamicsInterface(temp2, input, params);
 
             VectorAD temp3 = state + k3 * h;
-            VectorAD k4 = Dynamics(temp3, input, params);
+            VectorAD k4 = DynamicsInterface(temp3, input, params);
 
             state_next += (h / 6) * (k1 + 2 * k2 + 2 * k3 + k4);
           }
@@ -85,10 +91,15 @@ namespace vurtis {
           return state_next;
         }
 
-        // Integrator interface for plain Eigen vectors
-        virtual Vector integrator(const Vector &state_,const Vector &input_) {
-          VectorAD state = state_;
-          VectorAD input = input_;
+
+        Vector integrate(const Vector & _state,const Vector & _input) {
+          return static_cast<Model*>(this)->integrator(_state, _input);
+        }
+
+        virtual // Integrator interface for plain Eigen vectors
+        Vector integrator(const Vector & _state,const Vector & _input) {
+          VectorAD state = _state;
+          VectorAD input = _input;
 
           VectorAD state_next = step(state, input);
 
@@ -109,57 +120,68 @@ namespace vurtis {
                                     wrt(input), at(state, input), F_eval_);
         }
         Matrix dFdp(VectorAD &state, VectorAD &input, VectorAD &params) {
-          return autodiff::jacobian([&](VectorAD &state, VectorAD &input, VectorAD &params) {return step(state,input, params); },
+          return autodiff::jacobian([&](VectorAD &state, VectorAD &input, VectorAD &params) {return step(state,input,params); },
                                     wrt(params), at(state, input, params));
         }
 
-        virtual MatrixAD dFdxu(VectorAD &state, VectorAD &input, VectorAD &params) {
-          MatrixAD res(nx_, nx_+nu_);
+        MatrixAD dFdxu(VectorAD &state, VectorAD &input, VectorAD &params) {
+          MatrixAD res(nx_, nx_ + nu_);
           res.leftCols(nx_) = Ad(state, input);
           res.rightCols(nu_) = Bd(state, input);
 
           return res;
         }
 
+/*        virtual MatrixAD dFdxup(VectorAD &state, VectorAD &input, VectorAD &params) {
+          return dFdxu(state, input, params);
+        }*/
         //------------------------------------------------------------------------------------------------------------------
 
         // constraints (to be implemented) and their sensitivities
 
-        virtual VectorAD Constraint(VectorAD &state, VectorAD &input, const Vector &params) = 0;
-        virtual VectorAD EndConstraint(VectorAD &state, const Vector &params) = 0;
-
-        Matrix Cd(VectorAD &state, VectorAD &input, const Vector &params) {
-          return autodiff::jacobian([&](VectorAD &state, VectorAD &input, const Vector &params){return Constraint(state, input, params); },
-                                    wrt(state),
-                                    at(state, input, params),
-                                    h_eval_);
+        VectorAD ConstraintInterface(VectorAD &state, VectorAD &input, int t_idx) {
+          return static_cast<Model*>(this)->Constraint(state, input, t_idx);
         }
 
-        Matrix Dd(VectorAD &state, VectorAD &input, const Vector &params) {
-          return autodiff::jacobian([&](VectorAD &state, VectorAD &input, const Vector &params) { return Constraint(state, input, params); },
+        VectorAD EndConstraintInterface(VectorAD &state, int t_idx) {
+          return static_cast<Model*>(this)->EndConstraint(state, t_idx);
+        }
+
+        Matrix Cd(VectorAD &state, VectorAD &input, const int t_idx) {
+          return autodiff::jacobian([&](VectorAD &state, VectorAD &input, const int t_idx){
+            return ConstraintInterface(state, input, t_idx); },
+                                    wrt(state),at(state, input, t_idx),h_eval_);
+        }
+
+        Matrix Dd(VectorAD &state, VectorAD &input, const int t_idx) {
+          return autodiff::jacobian([&](VectorAD &state, VectorAD &input, const int t_idx) {
+            return ConstraintInterface(state, input, t_idx); },
                                     wrt(input),
-                                    at(state, input, params),
+                                    at(state, input, t_idx),
                                     h_eval_);
         }
 
-        virtual MatrixAD dConstrdxu(VectorAD &state, VectorAD &input, VectorAD &params, const Vector &nlp_params) {
+/*        virtual MatrixAD dConstrdxu(VectorAD &state, VectorAD &input, VectorAD &params, const int t_idx) {
           MatrixAD res(nh_, nx_+nu_);
-          res.leftCols(nx_) = Cd(state, input, nlp_params);
-          res.rightCols(nu_) = Dd(state, input, nlp_params);
+          res.leftCols(nx_) = Cd(state, input, t_idx);
+          res.rightCols(nu_) = Dd(state, input, t_idx);
 
           return res;
-        }
+        }*/
 
 
-        Matrix Cd_e(VectorAD &state, Vector &params) {
-          return autodiff::jacobian([&](VectorAD &state, Vector &params) { return EndConstraint(state, params); },
+        Matrix Cd_e(VectorAD &state, const int t_idx) {
+          return autodiff::jacobian([&](VectorAD &state, const int t_idx) { return EndConstraintInterface(state, t_idx); },
                                     wrt(state),
-                                    at(state, params),
+                                    at(state, t_idx),
                                     he_eval_);
         }
         //------------------------------------------------------------------------------------------------------------------
 
-        virtual Vector GetModelParams() const {};
+        Vector GetModelParams() {
+          return static_cast<Model*>(this)->GetModelParams();
+        }
+
 
 
     };
