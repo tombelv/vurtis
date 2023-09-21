@@ -466,6 +466,7 @@ namespace vurtis {
 
           QP_.settings.max_iter = 500;
           QP_.settings.eps_abs = 1e-5;
+          QP_.settings.initial_guess = proxsuite::proxqp::InitialGuessStatus::WARM_START_WITH_PREVIOUS_RESULT;
 
         SparseMatrixEigen A = constraint_matrix_.topRows(nx_*(N_+1));
         SparseMatrixEigen C = constraint_matrix_.bottomRows(nh_*N_+nh_e_);
@@ -628,6 +629,13 @@ namespace vurtis {
         void debug() {
           std::cout << "Hessian matrix:\n" << hessian_matrix_ << std::endl;
           std::cout << "Constraint matrix:\n" <<  constraint_matrix_ << std::endl;
+        }
+
+        const Matrix GetAdatStage(int stage) const {
+          return Ad_list_.middleCols(stage*nx_,nx_);
+        }
+        const Matrix GetBdatStage(int stage) const {
+          return Bd_list_.middleCols(stage*nu_,nu_);
         }
 
 

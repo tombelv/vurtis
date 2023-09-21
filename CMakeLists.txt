@@ -7,7 +7,7 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 set(CMAKE_CXX_FLAGS_DEBUG "-Wall -Wextra -g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 
 add_library(${PROJECT_NAME} INTERFACE)
@@ -19,4 +19,6 @@ find_package(Eigen3 REQUIRED)
 target_include_directories(${PROJECT_NAME} INTERFACE include/)
 
 target_link_libraries(${PROJECT_NAME} INTERFACE OsqpEigen::OsqpEigen proxsuite::proxsuite-vectorized)
+target_compile_options(${PROJECT_NAME} INTERFACE "-march=native")
+
 
