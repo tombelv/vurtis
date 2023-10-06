@@ -465,8 +465,10 @@ namespace vurtis {
           // Settings
 
           QP_.settings.max_iter = 500;
-          QP_.settings.eps_abs = 1e-5;
+          QP_.settings.eps_abs = 1e-4;
           QP_.settings.initial_guess = proxsuite::proxqp::InitialGuessStatus::WARM_START_WITH_PREVIOUS_RESULT;
+          //QP_.settings.initial_guess = proxsuite::proxqp::InitialGuessStatus::EQUALITY_CONSTRAINED_INITIAL_GUESS;
+          QP_.settings.verbose = false;
 
         SparseMatrixEigen A = constraint_matrix_.topRows(nx_*(N_+1));
         SparseMatrixEigen C = constraint_matrix_.bottomRows(nh_*N_+nh_e_);
